@@ -49,11 +49,13 @@ df["Şehir"] = df["Şehir"].str.upper()
 # --------------------------------------------------
 @st.cache_data
 def load_map():
-    gdf = gpd.read_file("data/tr_shp/tr.shp")
+    gdf = gpd.read_file(
+        "data/tr_shp/tr.shp",
+        engine="fiona"
+    )
     gdf["name"] = gdf["name"].str.upper()
     return gdf
 
-turkey_map = load_map()
 
 # --------------------------------------------------
 # ŞEHİR ADI TEMİZLEME
@@ -186,3 +188,4 @@ fig.add_scattergeo(
 )
 
 st.plotly_chart(fig, use_container_width=True)
+
