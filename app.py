@@ -45,7 +45,7 @@ df = pd.read_excel(uploaded_file)
 df["Şehir"] = df["Şehir"].str.upper()
 
 # --------------------------------------------------
-# HARİTA OKU
+# HARİTA OKU (FIONA ZORUNLU)
 # --------------------------------------------------
 @st.cache_data
 def load_map():
@@ -56,6 +56,7 @@ def load_map():
     gdf["name"] = gdf["name"].str.upper()
     return gdf
 
+turkey_map = load_map()
 
 # --------------------------------------------------
 # ŞEHİR ADI TEMİZLEME
@@ -188,4 +189,5 @@ fig.add_scattergeo(
 )
 
 st.plotly_chart(fig, use_container_width=True)
+
 
