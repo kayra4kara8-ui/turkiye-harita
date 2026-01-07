@@ -23,13 +23,24 @@ region_colors = {
 }
 
 @st.cache_data
-def load_data():
+def load_data(uploaded_excel=None):
     """Veri ve harita dosyalarını yükle"""
     # Excel dosyasını yükle
-    df = pd.read_excel("Data.xlsx")
+    if uploaded_excel is not None:
+        df = pd.read_excel(uploaded_excel)
+    else:
+        # Yerel dosyadan yükle (varsa)
+        try:
+            df = pd.read_excel("Data.xlsx")
+        except FileNotFoundError:
+            return None, None
     
     # GeoJSON'ı yükle
-    turkey_map = gpd.read_file("turkey.geojson")
+    try:
+        turkey_map = gpd.read_file("turkey.geojson")
+    except FileNotFoundError:
+        st.error("❌ turkey.geojson dosyası bulunamadı! Lütfen GeoJSON dosyasını proje klasörüne ekleyin.")
+        return None, None
     
     return df, turkey_map
 
@@ -231,12 +242,39 @@ def create_figure(merged_region, selected_manager):
 
 # Ana uygulama
 try:
+    # Sidebar - Dosya yükleme
+    st.sidebar.header("📂 Dosya Yükleme")
+    uploaded_file = st.sidebar.file_uploader(
+        "Excel Dosyası Yükle (Data.xlsx)", 
+        type=['xlsx', 'xls'],
+        help="Şehir, Bölge, Ticaret Müdürü ve Kutu Adet sütunlarını içeren Excel dosyası"
+    )
+    
     # Veriyi yükle
-    df, turkey_map = load_data()
+    if uploaded_file is not None:
+        df, turkey_map = load_data(uploaded_file)
+    else:
+        # Yerel dosyayı dene
+        df, turkey_map = load_data()
+        if df is None:
+            st.warning("⚠️ Lütfen Excel dosyanızı yükleyin veya Data.xlsx dosyasını proje klasörüne ekleyin")
+            st.info("""
+            📋 Excel dosyanız şu sütunları içermelidir:
+            - **Şehir**: Şehir adı
+            - **Bölge**: Bölge adı  
+            - **Ticaret Müdürü**: Müdür adı
+            - **Kutu Adet**: Sayısal değer
+            """)
+            st.stop()
+    
+    if turkey_map is None:
+        st.stop()
+    
     merged_region, bolge_df = prepare_data(df, turkey_map)
     
     # Sidebar - Müdür seçimi
-    st.sidebar.header("Filtreler")
+    st.sidebar.markdown("---")
+    st.sidebar.header("🔍 Filtreler")
     managers = ["Tümü"] + sorted(merged_region["Ticaret Müdürü"].dropna().unique().tolist())
     selected_manager = st.sidebar.selectbox("Ticaret Müdürü", managers)
     
@@ -274,9 +312,20 @@ except FileNotFoundError as e:
     st.error(f"""
     ❌ Dosya bulunamadı: {e}
     
-    Lütfen aşağıdaki dosyaların mevcut olduğundan emin olun:
-    - Data.xlsx
-    - tr_shp/tr.shp (ve ilgili .shx, .dbf dosyaları)
+    **Gerekli dosyalar:**
+    - ✅ turkey.geojson (proje klasöründe olmalı)
+    - ✅ Data.xlsx (sidebar'dan yüklenebilir veya proje klasöründe olabilir)
+    """)
+    st.info("""
+    💡 **Nasıl hazırlanır?**
+    
+    1️⃣ **turkey.geojson oluşturmak için:**
+    - GeoJSON oluşturma scriptini Colab'da çalıştırın
+    - Veya indirme scriptini kullanın
+    
+    2️⃣ **Data.xlsx için:**
+    - Sidebar'dan "Excel Dosyası Yükle" butonunu kullanın
+    - Veya dosyayı proje klasörüne kopyalayın
     """)
 except Exception as e:
     st.error(f"Hata oluştu: {str(e)}")
