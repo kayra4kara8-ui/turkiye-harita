@@ -190,17 +190,16 @@ def create_figure(gdf, manager):
         showlegend=False
     )
 
-    fig.update_layout(
+   fig.update_layout(
         geo=dict(
             projection=dict(type="mercator"),
-            center=dict(lat=39.0, lon=35.0),
-            lonaxis=dict(range=[25, 45]),
-            lataxis=dict(range=[35, 43]),
+            fitbounds="locations",   # <<< EN ÖNEMLİ SATIR
             visible=False
         ),
         height=750,
         margin=dict(l=0, r=0, t=40, b=0)
-)
+    )
+
 
 
     
@@ -227,6 +226,7 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("📊 Bölge Bazlı Toplamlar")
 st.dataframe(bolge_df, use_container_width=True, hide_index=True)
+
 
 
 
