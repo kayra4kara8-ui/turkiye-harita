@@ -15,49 +15,59 @@ st.set_page_config(page_title="Türkiye Satış Haritası", layout="wide")
 st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
 
 # =============================================================================
-# ŞEHİR DÜZELTME MAP
+# ŞEHİR EŞLEŞTİRME (MASTER)
 # =============================================================================
 FIX_CITY_MAP = {
     "AGRI": "AĞRI",
     "BARTÄ±N": "BARTIN",
-    "BINGÃ¶L": "BINGÖL",
+    "BINGÃ¶L": "BİNGÖL",
     "DÃ¼ZCE": "DÜZCE",
-    "ELAZIG": "ELÂZIĞ",
-    "ESKISEHIR": "ESKIŞEHIR",
+    "ELAZIG": "ELAZIĞ",
+    "ESKISEHIR": "ESKİŞEHİR",
     "GÃ¼MÃ¼SHANE": "GÜMÜŞHANE",
-    "HAKKARI": "HAKKÂRI",
+    "HAKKARI": "HAKKARİ",
     "ISTANBUL": "İSTANBUL",
-    "IZMIR": "İZMIR",
+    "IZMIR": "İZMİR",
     "IÄ\x9fDIR": "IĞDIR",
-    "K. MARAS'": "KAHRAMANMARAŞ",
     "KARABÃ¼K": "KARABÜK",
     "KINKKALE": "KIRIKKALE",
-    "KIRSEHIR": "KIRŞEHIR",
+    "KIRSEHIR": "KIRŞEHİR",
     "KÃ¼TAHYA": "KÜTAHYA",
     "MUGLA": "MUĞLA",
     "MUS": "MUŞ",
-    "NEVSEHIR": "NEVŞEHIR",
-    "NIGDE": "NIĞDE",
+    "NEVSEHIR": "NEVŞEHİR",
+    "NIGDE": "NİĞDE",
     "SANLIURFA": "ŞANLIURFA",
     "SIRNAK": "ŞIRNAK",
-    "TEKIRDAG": "TEKIRDAĞ",
+    "TEKIRDAG": "TEKİRDAĞ",
     "USAK": "UŞAK",
     "ZINGULDAK": "ZONGULDAK",
     "Ã\x87ANAKKALE": "ÇANAKKALE",
     "Ã\x87ANKIRI": "ÇANKIRI",
-    "Ã\x87ORUM": "ÇORUM"
+    "Ã\x87ORUM": "ÇORUM",
+    "K. MARAS": "KAHRAMANMARAŞ"
 }
 
 # =============================================================================
-# BÖLGE RENKLERİ (5 BÖLGE)
+# NORMALIZATION
 # =============================================================================
-REGION_COLORS = {
-    "MARMARA": "#2F6FD6",
-    "KUZEY ANADOLU": "#2E8B57",
-    "BATI ANADOLU": "#2BB0A6",
-    "İÇ ANADOLU": "#8B6B4A",
-    "GÜNEY DOĞU ANADOLU": "#A05A2C"
-}
+def normalize_city(name):
+    if pd.isna(name):
+        return None
+
+    name = str(name).upper().strip()
+
+    tr_map = {
+        "İ": "I", "I": "I",
+        "Ğ": "G", "Ü": "U",
+        "Ş": "S", "Ö": "O",
+        "Ç": "C", "Â": "A"
+    }
+
+    for k, v in tr_map.items():
+        name = name.replace(k, v)
+
+    return name
 
 # =============================================================================
 # DATA LOAD
@@ -71,32 +81,35 @@ def load_excel(file=None):
 @st.cache_resource
 def load_geo():
     gdf = gpd.read_file("turkey.geojson")
-    gdf["name"] = gdf["name"].str.upper().replace(FIX_CITY_MAP)
+    gdf["raw_name"] = gdf["name"].str.upper()
+    gdf["fixed_name"] = gdf["raw_name"].replace(FIX_CITY_MAP)
+    gdf["CITY_KEY"] = gdf["fixed_name"].apply(normalize_city)
     return gdf
 
 # =============================================================================
-# DATA PREP (CACHE YOK – HATA ÇIKMASIN DİYE)
+# DATA PREP (CACHE YOK – HATA OLMASIN)
 # =============================================================================
 def prepare_data(df, gdf):
 
     df = df.copy()
     gdf = gdf.copy()
 
-    df["Şehir"] = df["Şehir"].str.upper().replace(FIX_CITY_MAP)
+    df["Şehir_fix"] = df["Şehir"].str.upper().replace(FIX_CITY_MAP)
+    df["CITY_KEY"] = df["Şehir_fix"].apply(normalize_city)
+
     df["Bölge"] = df["Bölge"].str.upper()
     df["Ticaret Müdürü"] = df["Ticaret Müdürü"].str.upper()
     df["Kutu Adet"] = pd.to_numeric(df["Kutu Adet"], errors="coerce").fillna(0)
 
     merged = gdf.merge(
         df,
-        left_on="name",
-        right_on="Şehir",
+        on="CITY_KEY",
         how="left"
     )
 
+    merged["Şehir"] = merged["fixed_name"]
     merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
     merged["Bölge"] = merged["Bölge"].fillna("DİĞER")
-    merged["Şehir"] = merged["name"]
 
     bolge_df = (
         merged.groupby("Bölge", as_index=False)["Kutu Adet"]
@@ -132,16 +145,13 @@ def create_figure(gdf, manager):
 
     fig = go.Figure()
 
-    # ==========================
-    # İL BAZLI CHOROPLETH (HOVER VAR)
-    # ==========================
     fig.add_choropleth(
         geojson=json.loads(gdf.to_json()),
         locations=gdf.index,
         z=gdf["Kutu Adet"],
-        colorscale="Blues",
+        colorscale="YlGnBu",
         marker_line_color="black",
-        marker_line_width=0.4,
+        marker_line_width=0.5,
         hovertemplate=(
             "<b>%{customdata[0]}</b><br>"
             "Bölge: %{customdata[1]}<br>"
@@ -152,30 +162,6 @@ def create_figure(gdf, manager):
         showscale=False
     )
 
-    # ==========================
-    # BÖLGE LABEL
-    # ==========================
-    region_df = gdf.dissolve(by="Bölge", aggfunc={"Kutu Adet": "sum"}).reset_index()
-    rp = region_df.to_crs(3857)
-    rp["centroid"] = rp.geometry.centroid
-    rp = rp.to_crs(4326)
-
-    fig.add_scattergeo(
-        lon=rp.centroid.x,
-        lat=rp.centroid.y,
-        mode="text",
-        text=[
-            f"<b>{r['Bölge']}</b><br>{int(r['Kutu Adet']):,}"
-            for _, r in rp.iterrows()
-        ],
-        textfont=dict(size=13, color="black"),
-        hoverinfo="skip",
-        showlegend=False
-    )
-
-    # ==========================
-    # İL SINIRLARI
-    # ==========================
     lons, lats = [], []
     for geom in gdf.geometry.boundary:
         lo, la = lines_to_lonlat(geom)
@@ -186,23 +172,21 @@ def create_figure(gdf, manager):
         lon=lons,
         lat=lats,
         mode="lines",
-        line=dict(color="rgba(80,80,80,0.5)", width=0.6),
-        hoverinfo="skip",
-        showlegend=False
+        line=dict(color="rgba(70,70,70,0.5)", width=0.6),
+        hoverinfo="skip"
     )
 
     fig.update_layout(
         geo=dict(
             projection=dict(type="mercator"),
-            center=dict(lat=39.0, lon=35.0),
+            center=dict(lat=39, lon=35),
             lonaxis=dict(range=[25, 45]),
             lataxis=dict(range=[35, 43]),
             visible=False
         ),
         height=750,
         margin=dict(l=0, r=0, t=40, b=0)
-)
-
+    )
 
     return fig
 
@@ -226,5 +210,3 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("📊 Bölge Bazlı Toplamlar")
 st.dataframe(bolge_df, use_container_width=True, hide_index=True)
-
-
