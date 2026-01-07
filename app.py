@@ -26,16 +26,50 @@ def tr_upper(text):
     )
 
 # =============================================================================
+# BOZUK ŞEHİR DÜZELTMELERİ (KRİTİK)
+# =============================================================================
+fix_city_map = {
+    "AGRI": "AGRI",
+    "BARTÄ±N": "BARTIN",
+    "BINGÃ¶L": "BINGOL",
+    "DÃ¼ZCE": "DUZCE",
+    "ELAZIG": "ELAZIG",
+    "ESKISEHIR": "ESKISEHIR",
+    "GÃ¼MÃ¼SHANE": "GUMUSHANE",
+    "HAKKARI": "HAKKARI",
+    "ISTANBUL": "ISTANBUL",
+    "IZMIR": "IZMIR",
+    "IÄ\x9fDIR": "IGDIR",
+    "K. MARAS": "KAHRAMANMARAS",
+    "KARABÃ¼K": "KARABUK",
+    "KINKKALE": "KIRIKKALE",
+    "KIRSEHIR": "KIRSEHIR",
+    "KÃ¼TAHYA": "KUTAHYA",
+    "MUGLA": "MUGLA",
+    "MUS": "MUS",
+    "NEVSEHIR": "NEVSEHIR",
+    "NIGDE": "NIGDE",
+    "SANLIURFA": "SANLIURFA",
+    "SIRNAK": "SIRNAK",
+    "TEKIRDAG": "TEKIRDAG",
+    "USAK": "USAK",
+    "ZINGULDAK": "ZONGULDAK",
+    "Ã\x87ANAKKALE": "CANAKKALE",
+    "Ã\x87ANKIRI": "CANKIRI",
+    "Ã\x87ORUM": "CORUM"
+}
+
+# =============================================================================
 # BÖLGE RENKLERİ
 # =============================================================================
 REGION_COLORS = {
-    "MARMARA": "#1f77b4",
-    "KARADENIZ": "#2ca02c",
-    "EGE": "#17becf",
-    "AKDENIZ": "#ff7f0e",
-    "IC ANADOLU": "#8c564b",
+    "MARMARA": "#1f77b4",              # Mavi
+    "KARADENIZ": "#2ca02c",             # Yeşil
+    "EGE": "#6baed6",
+    "AKDENIZ": "#ff9f1c",
+    "IC ANADOLU": "#8c564b",            # Kahverengi
     "DOGU ANADOLU": "#a0522d",
-    "GUNEYDOGU ANADOLU": "#4b2e13",
+    "GUNEYDOGU ANADOLU": "#4b2e13",     # Koyu kahve
     "DIGER": "#cccccc"
 }
 
@@ -70,6 +104,8 @@ def prepare_data(df, gdf):
 
     # Normalize
     df["Şehir"] = df["Şehir"].apply(tr_upper)
+    df["Şehir"] = df["Şehir"].replace(fix_city_map)
+
     df["Bölge"] = df["Bölge"].apply(tr_upper)
     df["Ticaret Müdürü"] = df["Ticaret Müdürü"].apply(tr_upper)
 
@@ -86,7 +122,6 @@ def prepare_data(df, gdf):
     merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
     merged["Bölge"] = merged["Bölge"].fillna("DIGER")
 
-    # Bölge toplamları
     bolge_df = (
         merged.groupby("Bölge", as_index=False)["Kutu Adet"]
         .sum()
@@ -105,39 +140,51 @@ def create_figure(gdf, manager):
 
     fig = go.Figure()
 
-    # İl bazlı choropleth
+    # İl bazlı harita
     fig.add_choropleth(
         geojson=json.loads(gdf.to_json()),
         locations=gdf.index,
         z=gdf["Kutu Adet"],
-        colorscale="Blues",
+        colorscale="Greys",
         marker_line_color="black",
         marker_line_width=0.4,
+        customdata=gdf[["name", "Bölge", "Kutu Adet"]],
         hovertemplate=(
             "<b>%{customdata[0]}</b><br>"
             "Bölge: %{customdata[1]}<br>"
             "Kutu Adet: %{customdata[2]:,}"
             "<extra></extra>"
         ),
-        customdata=gdf[["name", "Bölge", "Kutu Adet"]],
         showscale=False
     )
 
-    # Bölge label
+    # Bölge alanları (renkli)
     region_df = gdf.dissolve(by="Bölge", aggfunc={"Kutu Adet": "sum"}).reset_index()
-    region_df = region_df.to_crs(3857)
-    region_df["centroid"] = region_df.geometry.centroid
-    region_df = region_df.to_crs(4326)
+    region_df["color"] = region_df["Bölge"].map(REGION_COLORS).fillna("#cccccc")
+
+    for _, r in region_df.iterrows():
+        fig.add_choropleth(
+            geojson=json.loads(region_df.to_json()),
+            locations=[r["Bölge"]],
+            z=[1],
+            featureidkey="properties.Bölge",
+            colorscale=[[0, r["color"]], [1, r["color"]]],
+            showscale=False,
+            marker_line_width=1,
+            hovertemplate=f"<b>{r['Bölge']}</b><br>Toplam: {int(r['Kutu Adet']):,}<extra></extra>"
+        )
+
+    # Bölge label
+    rp = region_df.to_crs(3857)
+    rp["centroid"] = rp.geometry.centroid
+    rp = rp.to_crs(4326)
 
     fig.add_scattergeo(
-        lon=region_df.centroid.x,
-        lat=region_df.centroid.y,
+        lon=rp.centroid.x,
+        lat=rp.centroid.y,
         mode="text",
-        text=[
-            f"<b>{r['Bölge']}</b><br>{int(r['Kutu Adet']):,}"
-            for _, r in region_df.iterrows()
-        ],
-        textfont=dict(size=13, color="black"),
+        text=[f"<b>{r['Bölge']}</b><br>{int(r['Kutu Adet']):,}" for _, r in rp.iterrows()],
+        textfont=dict(color="black", size=13),
         hoverinfo="skip",
         showlegend=False
     )
