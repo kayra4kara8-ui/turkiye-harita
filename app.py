@@ -9,6 +9,37 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # =============================================================================
+# TÜRKÇE KARAKTER NORMALİZASYONU (KRİTİK)
+# =============================================================================
+def tr_upper(text):
+    if pd.isna(text):
+        return text
+    text = str(text)
+    return (
+        text.replace("i", "İ")
+            .replace("ı", "I")
+            .upper()
+            .replace("Ğ", "G")
+            .replace("Ş", "S")
+            .replace("Ü", "U")
+            .replace("Ö", "O")
+            .replace("Ç", "C")
+    )
+
+# =============================================================================
+# BÖLGE RENKLERİ
+# =============================================================================
+REGION_COLORS = {
+    "MARMARA": "#1f77b4",              # Mavi
+    "KARADENIZ": "#2ca02c",             # Yeşil
+    "EGE": "#17becf",
+    "AKDENIZ": "#ff7f0e",
+    "IC ANADOLU": "#8c564b",            # Kahverengi
+    "DOGU ANADOLU": "#a0522d",
+    "GUNEYDOGU ANADOLU": "#5a2d0c"      # Koyu kahve
+}
+
+# =============================================================================
 # PAGE CONFIG
 # =============================================================================
 st.set_page_config(page_title="Türkiye Bölge Haritası", layout="wide")
@@ -23,30 +54,30 @@ def load_excel(uploaded_file=None):
         return pd.read_excel(uploaded_file)
     return pd.read_excel("Data.xlsx")
 
-
 @st.cache_resource
 def load_turkey_map():
     return gpd.read_file("turkey.geojson")
-
 
 # =============================================================================
 # DATA PREPARATION
 # =============================================================================
 @st.cache_data
-def prepare_data(df, _turkey_map):
-    df = df.copy()
-    turkey_map = _turkey_map.copy()
+def prepare_data(df, turkey_map):
 
-    # Normalize text
-    df["Şehir"] = df["Şehir"].str.upper()
-    df["Bölge"] = df["Bölge"].str.upper()
-    df["Ticaret Müdürü"] = df["Ticaret Müdürü"].str.upper()
-    turkey_map["name"] = turkey_map["name"].str.upper()
+    df = df.copy()
+    turkey_map = turkey_map.copy()
+
+    # 🔴 TÜRKÇE NORMALİZASYON
+    df["Şehir"] = df["Şehir"].apply(tr_upper)
+    df["Bölge"] = df["Bölge"].apply(tr_upper)
+    df["Ticaret Müdürü"] = df["Ticaret Müdürü"].apply(tr_upper)
+
+    turkey_map["name"] = turkey_map["name"].apply(tr_upper)
 
     # Numeric
     df["Kutu Adet"] = pd.to_numeric(df["Kutu Adet"], errors="coerce").fillna(0)
 
-    # Merge city -> geometry
+    # Merge (ŞEHİR ↔ GEOJSON)
     merged = turkey_map.merge(
         df,
         left_on="name",
@@ -55,15 +86,15 @@ def prepare_data(df, _turkey_map):
     )
 
     merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
+    merged["Bölge"] = merged["Bölge"].fillna("DİĞER")
 
     bolge_df = (
-        df.groupby("Bölge", as_index=False)["Kutu Adet"]
+        merged.groupby("Bölge", as_index=False)["Kutu Adet"]
         .sum()
         .sort_values("Kutu Adet", ascending=False)
     )
 
     return merged, bolge_df
-
 
 # =============================================================================
 # GEOMETRY HELPERS
@@ -84,41 +115,34 @@ def lines_to_lonlat(geom):
 
     return lons, lats
 
-
 # =============================================================================
 # MAP BLOCK
 # =============================================================================
 def create_map_block(gdf):
     traces = []
 
-    if gdf.empty or "Bölge" not in gdf.columns:
-        return traces
-
-    # Bölge bazlı tek geometri
-    region_df = (
-        gdf
-        .dissolve(by="Bölge", aggfunc={"Kutu Adet": "sum"})
-        .reset_index()
-    )
+    region_df = gdf.dissolve(by="Bölge", aggfunc={"Kutu Adet": "sum"}).reset_index()
+    region_df["color"] = region_df["Bölge"].map(REGION_COLORS).fillna("#cccccc")
 
     geojson = json.loads(region_df.to_json())
 
-    # Choropleth
-    traces.append(
-        go.Choropleth(
-            geojson=geojson,
-            locations=region_df["Bölge"],
-            featureidkey="properties.Bölge",
-            z=region_df["Kutu Adet"],
-            colorscale="YlOrRd",
-            showscale=True,
-            marker_line_color="white",
-            marker_line_width=0.8,
-            hovertemplate="<b>%{location}</b><br>Kutu Adet: %{z:,}<extra></extra>"
+    # Bölge renkleri
+    for _, r in region_df.iterrows():
+        traces.append(
+            go.Choropleth(
+                geojson=geojson,
+                locations=[r["Bölge"]],
+                z=[1],
+                featureidkey="properties.Bölge",
+                colorscale=[[0, r["color"]], [1, r["color"]]],
+                showscale=False,
+                marker_line_color="black",
+                marker_line_width=1,
+                hovertemplate=f"<b>{r['Bölge']}</b><br>Kutu Adet: {int(r['Kutu Adet']):,}<extra></extra>"
+            )
         )
-    )
 
-    # Labels
+    # LABELS
     rp = region_df.to_crs(3857)
     rp["centroid"] = rp.geometry.centroid
     rp = rp.to_crs(region_df.crs)
@@ -128,10 +152,8 @@ def create_map_block(gdf):
             lon=rp.centroid.x,
             lat=rp.centroid.y,
             mode="text",
-            text=[
-                f"<b>{r['Bölge']}</b><br>{int(r['Kutu Adet']):,}"
-                for _, r in rp.iterrows()
-            ],
+            text=[f"<b>{r['Bölge']}</b><br>{int(r['Kutu Adet']):,}" for _, r in rp.iterrows()],
+            textfont=dict(color="black", size=12),
             hoverinfo="skip",
             showlegend=False
         )
@@ -139,14 +161,14 @@ def create_map_block(gdf):
 
     return traces
 
-
 # =============================================================================
 # FIGURE
 # =============================================================================
 def create_figure(gdf, selected_manager):
+
     fig = go.Figure()
 
-    # 🔴 ÖNCE FİLTRE
+    # 🔴 FİLTRE
     if selected_manager != "TÜMÜ":
         gdf = gdf[gdf["Ticaret Müdürü"] == selected_manager]
 
@@ -161,7 +183,7 @@ def create_figure(gdf, selected_manager):
         lon=lons,
         lat=lats,
         mode="lines",
-        line=dict(color="rgba(120,120,120,0.5)", width=0.6),
+        line=dict(color="rgba(120,120,120,0.6)", width=0.6),
         hoverinfo="skip",
         showlegend=False
     )
@@ -177,12 +199,11 @@ def create_figure(gdf, selected_manager):
             projection_scale=4.7,
             visible=False
         ),
-        height=700,
+        height=720,
         margin=dict(l=0, r=0, t=40, b=0)
     )
 
     return fig
-
 
 # =============================================================================
 # APP FLOW
