@@ -15,6 +15,20 @@ st.set_page_config(page_title="Türkiye Satış Haritası", layout="wide")
 st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
 
 # =============================================================================
+# BÖLGE RENKLERİ
+# =============================================================================
+REGION_COLORS = {
+    "MARMARA": "#FF6B6B",
+    "EGE": "#4ECDC4",
+    "AKDENİZ": "#FFE66D",
+    "İÇ ANADOLU": "#95E1D3",
+    "KARADENİZ": "#6C5CE7",
+    "DOĞU ANADOLU": "#FFA07A",
+    "GÜNEYDOĞU ANADOLU": "#A29BFE",
+    "DİĞER": "#CCCCCC"
+}
+
+# =============================================================================
 # ŞEHİR EŞLEŞTİRME (MASTER)
 # =============================================================================
 FIX_CITY_MAP = {
@@ -132,6 +146,11 @@ def lines_to_lonlat(geom):
             lats += list(ys) + [None]
     return lons, lats
 
+def get_region_center(gdf_region):
+    """Bölgenin merkez koordinatlarını hesapla"""
+    centroid = gdf_region.geometry.unary_union.centroid
+    return centroid.x, centroid.y
+
 # =============================================================================
 # FIGURE
 # =============================================================================
@@ -144,29 +163,36 @@ def create_figure(gdf, manager):
 
     fig = go.Figure()
 
-    fig.add_choropleth(
-        geojson=json.loads(gdf.to_json()),
-        locations=gdf.index,
-        z=gdf["Kutu Adet"],
-        colorscale="YlGnBu",
-        marker_line_color="black",
-        marker_line_width=0.5,
-        showscale=True,
-        customdata=list(
-            zip(
-                gdf["Şehir"],
-                gdf["Bölge"],
-                gdf["Kutu Adet"]
-            )
-        ),
-        hovertemplate=(
-            "<b>%{customdata[0]}</b><br>"
-            "Bölge: %{customdata[1]}<br>"
-            "Kutu Adet: %{customdata[2]:,}"
-            "<extra></extra>"
+    # Her bölge için ayrı trace
+    for region in gdf["Bölge"].unique():
+        region_gdf = gdf[gdf["Bölge"] == region]
+        color = REGION_COLORS.get(region, "#CCCCCC")
+        
+        fig.add_choropleth(
+            geojson=json.loads(region_gdf.to_json()),
+            locations=region_gdf.index,
+            z=[1] * len(region_gdf),  # Sabit değer, renk için
+            colorscale=[[0, color], [1, color]],
+            marker_line_color="white",
+            marker_line_width=1.5,
+            showscale=False,
+            customdata=list(
+                zip(
+                    region_gdf["Şehir"],
+                    region_gdf["Bölge"],
+                    region_gdf["Kutu Adet"]
+                )
+            ),
+            hovertemplate=(
+                "<b>%{customdata[0]}</b><br>"
+                "Bölge: %{customdata[1]}<br>"
+                "Kutu Adet: %{customdata[2]:,.0f}"
+                "<extra></extra>"
+            ),
+            name=region
         )
-    )
 
+    # Sınır çizgileri
     lons, lats = [], []
     for geom in gdf.geometry.boundary:
         lo, la = lines_to_lonlat(geom)
@@ -177,8 +203,32 @@ def create_figure(gdf, manager):
         lon=lons,
         lat=lats,
         mode="lines",
-        line=dict(color="rgba(60,60,60,0.6)", width=0.7),
-        hoverinfo="skip"
+        line=dict(color="rgba(255,255,255,0.8)", width=1),
+        hoverinfo="skip",
+        showlegend=False
+    )
+
+    # Bölge etiketleri
+    label_lons, label_lats, label_texts = [], [], []
+    
+    for region in gdf["Bölge"].unique():
+        region_gdf = gdf[gdf["Bölge"] == region]
+        total = region_gdf["Kutu Adet"].sum()
+        
+        if total > 0:  # Sadece veri olan bölgeleri göster
+            lon, lat = get_region_center(region_gdf)
+            label_lons.append(lon)
+            label_lats.append(lat)
+            label_texts.append(f"<b>{region}</b><br>{total:,.0f} kutu")
+
+    fig.add_scattergeo(
+        lon=label_lons,
+        lat=label_lats,
+        mode="text",
+        text=label_texts,
+        textfont=dict(size=11, color="black", family="Arial Black"),
+        hoverinfo="skip",
+        showlegend=False
     )
 
     fig.update_layout(
@@ -187,10 +237,12 @@ def create_figure(gdf, manager):
             center=dict(lat=39, lon=35),
             lonaxis=dict(range=[25, 45]),
             lataxis=dict(range=[35, 43]),
-            visible=False
+            visible=False,
+            bgcolor="rgba(240,240,240,0.3)"
         ),
         height=750,
-        margin=dict(l=0, r=0, t=40, b=0)
+        margin=dict(l=0, r=0, t=40, b=0),
+        paper_bgcolor="white"
     )
 
     return fig
@@ -210,9 +262,16 @@ st.sidebar.header("🔍 Filtre")
 managers = ["TÜMÜ"] + sorted(merged["Ticaret Müdürü"].unique())
 selected_manager = st.sidebar.selectbox("Ticaret Müdürü", managers)
 
+# Renk legend'ı
+st.sidebar.header("🎨 Bölge Renkleri")
+for region, color in REGION_COLORS.items():
+    if region in merged["Bölge"].values:
+        st.sidebar.markdown(f"<span style='color:{color}'>⬤</span> {region}", unsafe_allow_html=True)
+
 fig = create_figure(merged, selected_manager)
 st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("📊 Bölge Bazlı Toplamlar")
-st.dataframe(bolge_df, use_container_width=True, hide_index=True)
-
+bolge_styled = bolge_df.copy()
+bolge_styled["Renk"] = bolge_styled["Bölge"].map(REGION_COLORS)
+st.dataframe(bolge_styled, use_container_width=True, hide_index=True)
