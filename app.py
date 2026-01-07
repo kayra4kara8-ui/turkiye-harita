@@ -45,7 +45,7 @@ def load_data(uploaded_excel=None):
     return df, turkey_map
 
 @st.cache_data
-def prepare_data(df, turkey_map):
+def prepare_data(df, _turkey_map):
     """Veriyi hazırla ve birleştir"""
     
     # Şehir isimlerini büyük harfe çevir
@@ -330,3 +330,4 @@ except FileNotFoundError as e:
 except Exception as e:
     st.error(f"Hata oluştu: {str(e)}")
     st.exception(e)
+
