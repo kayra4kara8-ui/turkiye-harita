@@ -18,13 +18,13 @@ st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
 # BÖLGE RENKLERİ
 # =============================================================================
 REGION_COLORS = {
-    "MARMARA": "#FF6B6B",
-    "EGE": "#4ECDC4",
+    "MARMARA": "#3B82F6",
+    "BATI ANADOLU": "#14B8A6",
     "AKDENİZ": "#FFE66D",
-    "İÇ ANADOLU": "#95E1D3",
-    "KARADENİZ": "#6C5CE7",
+    "İÇ ANADOLU": "#A0522D",
+    "KUZEY ANADOLU": "#10B981",
     "DOĞU ANADOLU": "#FFA07A",
-    "GÜNEYDOĞU ANADOLU": "#A29BFE",
+    "GÜNEYDOĞU ANADOLU": "#5D4037",
     "DİĞER": "#CCCCCC"
 }
 
@@ -275,3 +275,4 @@ st.subheader("📊 Bölge Bazlı Toplamlar")
 bolge_styled = bolge_df.copy()
 bolge_styled["Renk"] = bolge_styled["Bölge"].map(REGION_COLORS)
 st.dataframe(bolge_styled, use_container_width=True, hide_index=True)
+
