@@ -293,3 +293,4 @@ st.dataframe(bolge_styled, use_container_width=True, hide_index=True)
 
 
 
+
