@@ -28,8 +28,8 @@ def load_data():
     # Excel dosyasını yükle
     df = pd.read_excel("Data.xlsx")
     
-    # Shapefile'ı yükle (veya alternatif olarak GeoJSON)
-    turkey_map = gpd.read_file("tr_shp/tr.shp")
+    # GeoJSON'ı yükle
+    turkey_map = gpd.read_file("turkey.geojson")
     
     return df, turkey_map
 
