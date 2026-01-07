@@ -3,180 +3,172 @@ import geopandas as gpd
 import pandas as pd
 import plotly.graph_objects as go
 import json
-import unicodedata
-from shapely.geometry import LineString, MultiLineString
+import warnings
+
+warnings.filterwarnings("ignore")
 
 # =============================================================================
-# PAGE
+# PAGE CONFIG
 # =============================================================================
-st.set_page_config(page_title="Türkiye Satış Haritası", layout="wide")
-st.title("🗺️ Türkiye – Bölge & Şehir Bazlı Kutu Adetleri")
+st.set_page_config(page_title="Türkiye Bölge Haritası", layout="wide")
+st.title("🗺️ Türkiye - Bölge & Şehir Bazlı Kutu Adetleri")
+
+# =============================================================================
+# LOAD DATA
+# =============================================================================
+@st.cache_data
+def load_excel(uploaded_file=None):
+    if uploaded_file is not None:
+        return pd.read_excel(uploaded_file)
+    return pd.read_excel("Data.xlsx")
+
+
+@st.cache_resource
+def load_map():
+    gdf = gpd.read_file("turkey.geojson")
+    gdf["name"] = gdf["name"].str.upper().str.strip()
+    return gdf
+
+
+# =============================================================================
+# PREPARE DATA
+# =============================================================================
+@st.cache_data
+def prepare_data(df, turkey_map):
+
+    df = df.copy()
+    gdf = turkey_map.copy()
+
+    # Normalize
+    df["Şehir"] = df["Şehir"].str.upper().str.strip()
+    df["Bölge"] = df["Bölge"].str.upper().str.strip()
+    df["Ticaret Müdürü"] = df["Ticaret Müdürü"].str.upper().str.strip()
+    df["Kutu Adet"] = pd.to_numeric(df["Kutu Adet"], errors="coerce").fillna(0)
+
+    # Şehir bazlı aggregation
+    city_df = (
+        df.groupby(["Şehir", "Bölge", "Ticaret Müdürü"], as_index=False)["Kutu Adet"]
+        .sum()
+    )
+
+    # Merge
+    merged = gdf.merge(
+        city_df,
+        left_on="name",
+        right_on="Şehir",
+        how="left"
+    )
+
+    merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
+    merged["Bölge"] = merged["Bölge"].fillna("BİLİNMİYOR")
+
+    return merged
+
 
 # =============================================================================
 # COLORS
 # =============================================================================
 REGION_COLORS = {
-    "MARMARA": "#1f4fd8",
-    "KARADENİZ": "#2e8b57",
-    "İÇ ANADOLU": "#8b6b4a",
-    "GÜNEYDOĞU ANADOLU": "#5c3a21"
+    "MARMARA": "#1f77b4",
+    "KARADENİZ": "#2ca02c",
+    "İÇ ANADOLU": "#8B5A2B",
+    "GÜNEYDOĞU ANADOLU": "#5C4033",
+    "EGE": "#17becf",
+    "AKDENİZ": "#98df8a",
+    "DOĞU ANADOLU": "#7f7f7f",
+    "BİLİNMİYOR": "#d3d3d3",
 }
-
-# =============================================================================
-# NORMALIZE
-# =============================================================================
-def normalize_city(s):
-    if pd.isna(s):
-        return None
-    s = str(s).upper().strip()
-    s = unicodedata.normalize("NFKD", s)
-    s = "".join(c for c in s if not unicodedata.combining(c))
-    s = (
-        s.replace("I", "İ")
-         .replace("Ğ", "G")
-         .replace("Ü", "U")
-         .replace("Ş", "S")
-         .replace("Ö", "O")
-         .replace("Ç", "C")
-    )
-    return s
-
-# =============================================================================
-# LOAD
-# =============================================================================
-@st.cache_data
-def load_excel(file):
-    return pd.read_excel(file)
-
-@st.cache_resource
-def load_geo():
-    return gpd.read_file("turkey.geojson")
-
-# =============================================================================
-# PREPARE
-# =============================================================================
-@st.cache_data
-def prepare(df, gdf):
-    df = df.copy()
-    gdf = gdf.copy()
-
-    df["CITY_KEY"] = df["Şehir"].apply(normalize_city)
-    df["Bölge"] = df["Bölge"].str.upper()
-    df["Kutu Adet"] = pd.to_numeric(df["Kutu Adet"], errors="coerce").fillna(0)
-
-    gdf["CITY_KEY"] = gdf["name"].apply(normalize_city)
-
-    city_total = (
-        df.groupby(["CITY_KEY", "Şehir", "Bölge"], as_index=False)
-        ["Kutu Adet"].sum()
-    )
-
-    merged = gdf.merge(city_total, on="CITY_KEY", how="left")
-
-    merged["Bölge"] = merged["Bölge"].fillna("BİLİNMİYOR")
-    merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
-
-    return merged
-
-# =============================================================================
-# GEOM
-# =============================================================================
-def lines_to_lonlat(geom):
-    lons, lats = [], []
-    if isinstance(geom, LineString):
-        xs, ys = geom.xy
-        lons += list(xs) + [None]
-        lats += list(ys) + [None]
-    elif isinstance(geom, MultiLineString):
-        for g in geom.geoms:
-            xs, ys = g.xy
-            lons += list(xs) + [None]
-            lats += list(ys) + [None]
-    return lons, lats
 
 # =============================================================================
 # FIGURE
 # =============================================================================
-def create_fig(gdf):
+def create_figure(gdf, selected_manager):
+
     fig = go.Figure()
 
-    # Borders
-    lons, lats = [], []
-    for g in gdf.geometry.boundary:
-        lo, la = lines_to_lonlat(g)
-        lons += lo
-        lats += la
+    if selected_manager != "TÜMÜ":
+        gdf = gdf[gdf["Ticaret Müdürü"] == selected_manager]
 
-    fig.add_scattergeo(
-        lon=lons,
-        lat=lats,
-        mode="lines",
-        line=dict(color="rgba(80,80,80,0.5)", width=0.8),
-        hoverinfo="skip"
+    # ---------------- CITY LAYER ----------------
+    geojson = json.loads(gdf.to_json())
+
+    fig.add_choropleth(
+        geojson=geojson,
+        locations=gdf.index,
+        z=gdf["Kutu Adet"],
+        colorscale="YlOrRd",
+        marker_line_color="black",
+        marker_line_width=0.5,
+        hovertemplate=
+        "<b>%{customdata[0]}</b><br>"
+        "Bölge: %{customdata[1]}<br>"
+        "Kutu Adet: %{z:,}<extra></extra>",
+        customdata=gdf[["name", "Bölge"]].values,
+        showscale=False
     )
 
-    # REGION
+    # ---------------- REGION LABELS ----------------
     region_df = (
-        gdf[gdf["Bölge"] != "BİLİNMİYOR"]
-        .dissolve(by="Bölge", aggfunc={"Kutu Adet": "sum"})
-        .reset_index()
+        gdf.groupby("Bölge", as_index=False)["Kutu Adet"]
+        .sum()
     )
 
-    fig.add_trace(
-        go.Choropleth(
-            geojson=json.loads(region_df.to_json()),
-            locations=region_df["Bölge"],
-            featureidkey="properties.Bölge",
-            z=region_df["Bölge"].map(lambda x: 1),
-            colorscale=[
-                [0, REGION_COLORS[r]] for r in region_df["Bölge"]
-            ],
-            showscale=False,
-            hovertemplate="<b>%{location}</b><br>Toplam: %{customdata:,}<extra></extra>",
-            customdata=region_df["Kutu Adet"]
-        )
-    )
-
-    # CITY POINTS
-    cp = gdf.to_crs(3857)
-    cp["centroid"] = cp.geometry.centroid
-    cp = cp.to_crs(gdf.crs)
+    region_geo = gdf.dissolve(by="Bölge", aggfunc="sum").reset_index()
+    region_geo = region_geo.to_crs(3857)
+    region_geo["centroid"] = region_geo.geometry.centroid
+    region_geo = region_geo.to_crs(4326)
 
     fig.add_scattergeo(
-        lon=cp.centroid.x,
-        lat=cp.centroid.y,
-        mode="markers",
-        marker=dict(size=6, color="black"),
+        lon=region_geo.centroid.x,
+        lat=region_geo.centroid.y,
+        mode="text",
         text=[
-            f"<b>{r['Şehir']}</b><br>Kutu Adet: {int(r['Kutu Adet']):,}"
-            for _, r in cp.iterrows()
+            f"<b>{row['Bölge']}</b><br>{int(row['Kutu Adet']):,}"
+            for _, row in region_geo.iterrows()
         ],
-        hovertemplate="%{text}<extra></extra>"
+        textfont=dict(color="black", size=12),
+        hoverinfo="skip",
+        showlegend=False
     )
 
+    # ---------------- LAYOUT ----------------
     fig.update_layout(
         geo=dict(
             scope="europe",
             center=dict(lat=39, lon=35),
-            projection_scale=4.5,
-            visible=False
+            projection_scale=4.8,
+            showland=False,
+            showcountries=False,
+            showlakes=False,
+            bgcolor="rgba(0,0,0,0)"
         ),
         height=750,
-        margin=dict(l=0, r=0, t=60, b=0)
+        margin=dict(l=0, r=0, t=40, b=0)
     )
 
     return fig
 
+
 # =============================================================================
 # APP
 # =============================================================================
-uploaded = st.sidebar.file_uploader("Excel Yükle", type=["xlsx", "xls"])
-if uploaded is None:
-    st.stop()
+st.sidebar.header("📂 Excel Yükle")
+uploaded_file = st.sidebar.file_uploader("Excel Dosyası", type=["xlsx", "xls"])
 
-df = load_excel(uploaded)
-gdf = load_geo()
-merged = prepare(df, gdf)
+df = load_excel(uploaded_file)
+turkey_map = load_map()
+merged = prepare_data(df, turkey_map)
 
-fig = create_fig(merged)
+st.sidebar.header("🔍 Filtre")
+managers = ["TÜMÜ"] + sorted(merged["Ticaret Müdürü"].dropna().unique().tolist())
+selected_manager = st.sidebar.selectbox("Ticaret Müdürü", managers)
+
+fig = create_figure(merged, selected_manager)
 st.plotly_chart(fig, use_container_width=True)
+
+st.subheader("📋 Bölge Bazlı Toplamlar")
+st.dataframe(
+    merged.groupby("Bölge", as_index=False)["Kutu Adet"].sum(),
+    use_container_width=True,
+    hide_index=True
+)
