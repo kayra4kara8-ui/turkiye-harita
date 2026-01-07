@@ -1,11 +1,10 @@
 import streamlit as st
 import pandas as pd
 import geopandas as gpd
-import plotly.express as px
 import plotly.graph_objects as go
 from shapely.geometry import LineString, MultiLineString
+import requests
 import warnings
-import os
 
 warnings.filterwarnings("ignore")
 
@@ -14,8 +13,7 @@ warnings.filterwarnings("ignore")
 # --------------------------------------------------
 st.set_page_config(
     page_title="Türkiye Bölge Bazlı Kutu Adetleri",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    layout="wide"
 )
 
 st.title("🇹🇷 Türkiye – Bölge Bazlı Kutu Adetleri")
@@ -32,11 +30,71 @@ REGION_COLORS = {
 }
 
 # --------------------------------------------------
+# TÜRKİYE HARİTASINI YÜKLE
+# --------------------------------------------------
+@st.cache_data
+def load_turkey_map():
+    """GitHub'dan direkt GeoJSON yükle"""
+    url = "https://raw.githubusercontent.com/alpers/Turkey-Maps-GeoJSON/master/tr-cities-utf8.json"
+    
+    try:
+        with st.spinner("🗺️ Türkiye haritası yükleniyor..."):
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            
+            # GeoJSON'ı GeoPandas ile oku
+            import json
+            geojson_data = json.loads(response.text)
+            gdf = gpd.GeoDataFrame.from_features(geojson_data["features"])
+            
+            # Sütun isimlerini düzenle
+            if 'properties' in gdf.columns:
+                gdf = pd.concat([gdf.drop(['properties'], axis=1), 
+                                gdf['properties'].apply(pd.Series)], axis=1)
+            
+            # Şehir ismi sütununu bul ve temizle
+            name_cols = ['name', 'NAME', 'city', 'il']
+            for col in name_cols:
+                if col in gdf.columns:
+                    gdf["name"] = gdf[col].str.upper().str.strip()
+                    break
+            
+            return gdf
+    
+    except Exception as e:
+        st.error(f"❌ Harita yüklenemedi: {str(e)}")
+        st.info("""
+        💡 Alternatif çözüm: 
+        1. https://github.com/alpers/Turkey-Maps-GeoJSON adresinden
+        2. tr-cities-utf8.json dosyasını indirin
+        3. Aşağıdan yükleyin
+        """)
+        
+        uploaded_map = st.file_uploader("🗺️ GeoJSON/Shapefile Yükle", type=["geojson", "json"])
+        if uploaded_map:
+            gdf = gpd.read_file(uploaded_map)
+            if 'properties' in gdf.columns:
+                gdf = pd.concat([gdf.drop(['properties'], axis=1), 
+                                gdf['properties'].apply(pd.Series)], axis=1)
+            
+            name_cols = ['name', 'NAME', 'city', 'il']
+            for col in name_cols:
+                if col in gdf.columns:
+                    gdf["name"] = gdf[col].str.upper().str.strip()
+                    break
+            return gdf
+        else:
+            st.stop()
+
+turkey_map = load_turkey_map()
+st.success(f"✅ Harita yüklendi ({len(turkey_map)} il)")
+
+# --------------------------------------------------
 # EXCEL YÜKLEME
 # --------------------------------------------------
-st.sidebar.header("📂 Dosya Yükleme")
+st.sidebar.header("📂 Veri Yükleme")
 uploaded_file = st.sidebar.file_uploader(
-    "Excel dosyasını yükleyin (Data.xlsx)",
+    "Excel dosyasını yükleyin",
     type=["xlsx", "xls"]
 )
 
@@ -46,128 +104,50 @@ if uploaded_file is None:
 
 try:
     df = pd.read_excel(uploaded_file)
+    required_cols = ["Şehir", "Bölge", "Kutu Adet", "Ticaret Müdürü"]
+    missing = [c for c in required_cols if c not in df.columns]
     
-    # Gerekli sütunları kontrol et
-    required_columns = ["Şehir", "Bölge", "Kutu Adet", "Ticaret Müdürü"]
-    missing_columns = [col for col in required_columns if col not in df.columns]
-    
-    if missing_columns:
-        st.error(f"❌ Excel dosyasında şu sütunlar eksik: {', '.join(missing_columns)}")
+    if missing:
+        st.error(f"❌ Eksik sütunlar: {', '.join(missing)}")
         st.stop()
     
     df["Şehir"] = df["Şehir"].str.upper().str.strip()
-    
+    st.sidebar.success(f"✅ Veri yüklendi ({len(df)} kayıt)")
+
 except Exception as e:
-    st.error(f"❌ Excel dosyası okunurken hata oluştu: {str(e)}")
+    st.error(f"❌ Excel hatası: {str(e)}")
     st.stop()
 
 # --------------------------------------------------
-# HARİTA OKU (SHP)
+# ŞEHİR ADI EŞLEŞTİRME
 # --------------------------------------------------
-@st.cache_data
-def load_map():
-    try:
-        shp_dir = "data/tr_shp"
-        
-        if not os.path.exists(shp_dir):
-            st.error(f"❌ Shapefile klasörü bulunamadı: {shp_dir}")
-            st.stop()
-        
-        shp_files = [f for f in os.listdir(shp_dir) if f.lower().endswith(".shp")]
-        
-        if not shp_files:
-            st.error("❌ Shapefile (.shp) bulunamadı!")
-            st.stop()
-        
-        shp_path = os.path.join(shp_dir, shp_files[0])
-        gdf = gpd.read_file(shp_path)
-        
-        # Sütun isimlerini küçük harfe çevir
-        gdf.columns = gdf.columns.str.lower()
-        
-        # 'name' sütununun varlığını kontrol et
-        if 'name' not in gdf.columns:
-            st.error(f"❌ Shapefile'da 'name' sütunu bulunamadı. Mevcut sütunlar: {', '.join(gdf.columns)}")
-            st.stop()
-        
-        gdf["name"] = gdf["name"].str.upper().str.strip()
-        
-        return gdf
-    
-    except Exception as e:
-        st.error(f"❌ Harita yüklenirken hata oluştu: {str(e)}")
-        st.stop()
-
-turkey_map = load_map()
-
-# --------------------------------------------------
-# ŞEHİR ADI TEMİZLEME
-# --------------------------------------------------
-fix_city_map = {
-    "AGRI": "AĞRI",
-    "BARTIN": "BARTIN",
-    "BINGOL": "BİNGÖL",
-    "DUZCE": "DÜZCE",
-    "ELAZIG": "ELAZIĞ",
-    "ESKISEHIR": "ESKİŞEHİR",
-    "GUMUSHANE": "GÜMÜŞHANE",
-    "HAKKARI": "HAKKARİ",
-    "ISTANBUL": "İSTANBUL",
-    "IZMIR": "İZMİR",
-    "IGDIR": "IĞDIR",
-    "K. MARAS": "KAHRAMANMARAŞ",
-    "KARABUK": "KARABÜK",
-    "KIRIKKALE": "KIRIKKALE",
-    "KIRSEHIR": "KIRŞEHİR",
-    "KUTAHYA": "KÜTAHYA",
-    "MUGLA": "MUĞLA",
-    "MUS": "MUŞ",
-    "NEVSEHIR": "NEVŞEHİR",
-    "NIGDE": "NİĞDE",
-    "SANLIURFA": "ŞANLIURFA",
-    "SIRNAK": "ŞIRNAK",
-    "TEKIRDAG": "TEKİRDAĞ",
-    "USAK": "UŞAK",
-    "ZONGULDAK": "ZONGULDAK",
-    "CANAKKALE": "ÇANAKKALE",
-    "CANKIRI": "ÇANKIRI",
-    "CORUM": "ÇORUM"
+fix_map = {
+    "ISTANBUL": "İSTANBUL", "IZMIR": "İZMİR", "SANLIURFA": "ŞANLIURFA",
+    "USAK": "UŞAK", "ELAZIG": "ELAZIĞ", "MUGLA": "MUĞLA",
+    "KIRSEHIR": "KIRŞEHİR", "NEVSEHIR": "NEVŞEHİR", "NIGDE": "NİĞDE",
+    "TEKIRDAG": "TEKİRDAĞ", "SIRNAK": "ŞIRNAK", "KIRIKKALE": "KIRIKKALE",
+    "K. MARAS": "KAHRAMANMARAŞ", "KINKKALE": "KIRIKKALE"
 }
 
-turkey_map["CITY_CLEAN"] = (
-    turkey_map["name"]
-    .replace(fix_city_map)
-    .str.upper()
-)
+turkey_map["CITY_CLEAN"] = turkey_map["name"].replace(fix_map).str.upper()
 
 # --------------------------------------------------
 # MERGE
 # --------------------------------------------------
-merged = turkey_map.merge(
-    df,
-    left_on="CITY_CLEAN",
-    right_on="Şehir",
-    how="left"
-)
-
+merged = turkey_map.merge(df, left_on="CITY_CLEAN", right_on="Şehir", how="left")
 merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
 
-# Eşleşmeyen şehirleri kontrol et
-unmatched_cities = set(df["Şehir"]) - set(merged[merged["Kutu Adet"] > 0]["Şehir"])
-if unmatched_cities:
+# Eşleşmeyen şehirler
+unmatched = set(df["Şehir"]) - set(merged[merged["Kutu Adet"] > 0]["Şehir"])
+if unmatched:
     with st.sidebar.expander("⚠️ Eşleşmeyen Şehirler"):
-        st.warning(f"Aşağıdaki şehirler haritada bulunamadı:")
-        for city in sorted(unmatched_cities):
+        for city in sorted(unmatched):
             st.write(f"- {city}")
 
 # --------------------------------------------------
 # BÖLGE TOPLAMLARI
 # --------------------------------------------------
-region_sum = (
-    merged.groupby("Bölge", as_index=False)["Kutu Adet"]
-    .sum()
-)
-
+region_sum = merged.groupby("Bölge", as_index=False)["Kutu Adet"].sum()
 region_map = (
     merged[["Bölge", "geometry"]]
     .dissolve(by="Bölge")
@@ -176,47 +156,55 @@ region_map = (
 )
 
 # --------------------------------------------------
-# DROPDOWN
+# TİCARET MÜDÜRÜ SEÇİMİ
 # --------------------------------------------------
 managers = ["Tümü"] + sorted(df["Ticaret Müdürü"].dropna().unique())
-selected_manager = st.sidebar.selectbox("🎯 Ticaret Müdürü Seçin", managers)
+selected = st.sidebar.selectbox("🎯 Ticaret Müdürü", managers)
 
-if selected_manager != "Tümü":
-    merged_view = merged[merged["Ticaret Müdürü"] == selected_manager].copy()
-    region_view = merged_view.groupby("Bölge", as_index=False)["Kutu Adet"].sum()
-    region_map_view = (
+if selected != "Tümü":
+    merged_view = merged[merged["Ticaret Müdürü"] == selected].copy()
+    region_view_sum = merged_view.groupby("Bölge", as_index=False)["Kutu Adet"].sum()
+    region_view = (
         merged_view[["Bölge", "geometry"]]
         .dissolve(by="Bölge")
         .reset_index()
-        .merge(region_view, on="Bölge", how="left")
+        .merge(region_view_sum, on="Bölge", how="left")
     )
 else:
     merged_view = merged.copy()
-    region_map_view = region_map.copy()
+    region_view = region_map.copy()
 
 # --------------------------------------------------
-# CHOROPLETH
+# HARİTA ÇİZİMİ
 # --------------------------------------------------
 fig = go.Figure()
 
-# Bölge haritası
-choropleth = px.choropleth(
-    region_map_view,
-    geojson=region_map_view.__geo_interface__,
-    locations="Bölge",
-    featureidkey="properties.Bölge",
-    color="Bölge",
-    color_discrete_map=REGION_COLORS,
-    hover_name="Bölge",
-    hover_data={"Kutu Adet": ":,"}
-)
+# Bölge renklendirme
+for _, region in region_view.iterrows():
+    if pd.isna(region["Bölge"]):
+        continue
+    
+    geom = region["geometry"]
+    if geom.geom_type == "Polygon":
+        polys = [geom]
+    else:
+        polys = list(geom.geoms)
+    
+    for poly in polys:
+        lons, lats = poly.exterior.xy
+        fig.add_scattergeo(
+            lon=list(lons),
+            lat=list(lats),
+            fill="toself",
+            fillcolor=REGION_COLORS.get(region["Bölge"], "#CCCCCC"),
+            line=dict(color="rgba(60,60,60,0.4)", width=1),
+            hoverinfo="text",
+            text=f"<b>{region['Bölge']}</b><br>Kutu Adet: {int(region['Kutu Adet']):,}",
+            showlegend=False
+        )
 
-fig.add_trace(choropleth.data[0])
-
-# --------------------------------------------------
-# ŞEHİR SINIRLARI
-# --------------------------------------------------
-def lines_to_lonlat(geom):
+# Şehir sınırları
+def lines_to_coords(geom):
     lons, lats = [], []
     if isinstance(geom, LineString):
         xs, ys = geom.xy
@@ -231,7 +219,7 @@ def lines_to_lonlat(geom):
 
 all_lons, all_lats = [], []
 for geom in merged_view.geometry.boundary:
-    lo, la = lines_to_lonlat(geom)
+    lo, la = lines_to_coords(geom)
     all_lons += lo
     all_lats += la
 
@@ -239,14 +227,12 @@ fig.add_scattergeo(
     lon=all_lons,
     lat=all_lats,
     mode="lines",
-    line=dict(width=0.6, color="rgba(60,60,60,0.6)"),
+    line=dict(width=0.5, color="rgba(60,60,60,0.5)"),
     hoverinfo="skip",
     showlegend=False
 )
 
-# --------------------------------------------------
-# ŞEHİR HOVER
-# --------------------------------------------------
+# Şehir hover
 pts = merged_view.to_crs(epsg=3857)
 pts["centroid"] = pts.geometry.centroid
 pts = pts.to_crs(merged_view.crs)
@@ -255,42 +241,28 @@ fig.add_scattergeo(
     lon=pts.centroid.x,
     lat=pts.centroid.y,
     mode="markers",
-    marker=dict(size=6, color="rgba(0,0,0,0)"),
+    marker=dict(size=5, color="rgba(0,0,0,0)"),
     hoverinfo="text",
     text=(
         "<b>" + pts["CITY_CLEAN"] + "</b><br>"
-        "Bölge: " + pts["Bölge"].fillna("Bilinmiyor") + "<br>"
+        "Bölge: " + pts["Bölge"].fillna("?") + "<br>"
         "Ticaret Müdürü: " + pts["Ticaret Müdürü"].fillna("Bilinmiyor") + "<br>"
         "Kutu Adet: " + pts["Kutu Adet"].astype(int).map(lambda x: f"{x:,}")
     ),
     showlegend=False
 )
 
-# --------------------------------------------------
-# BÖLGE LABEL
-# --------------------------------------------------
-region_proj = region_map_view.to_crs(epsg=3857)
-region_proj["centroid"] = region_proj.geometry.centroid
-region_proj = region_proj.to_crs(region_map_view.crs)
-
-fig.add_scattergeo(
-    lon=region_proj.centroid.x,
-    lat=region_proj.centroid.y,
-    text=region_proj.apply(
-        lambda r: f"<b>{r['Bölge']}</b><br>{int(r['Kutu Adet']):,}",
-        axis=1
-    ),
-    mode="text",
-    textfont=dict(size=13, color="black", family="Arial Black"),
-    showlegend=False
+# Layout
+fig.update_geos(
+    fitbounds="locations",
+    visible=False,
+    projection_type="mercator"
 )
 
-# Layout
-fig.update_geos(fitbounds="locations", visible=False)
 fig.update_layout(
     margin=dict(l=0, r=0, t=40, b=0),
-    showlegend=False,
-    height=700
+    height=700,
+    showlegend=False
 )
 
 st.plotly_chart(fig, use_container_width=True)
@@ -300,23 +272,22 @@ st.plotly_chart(fig, use_container_width=True)
 # --------------------------------------------------
 st.sidebar.header("📊 İstatistikler")
 
-if selected_manager != "Tümü":
-    total_boxes = merged_view["Kutu Adet"].sum()
-    st.sidebar.metric("Toplam Kutu", f"{int(total_boxes):,}")
-    
-    city_count = len(merged_view[merged_view["Kutu Adet"] > 0])
-    st.sidebar.metric("Şehir Sayısı", city_count)
+if selected != "Tümü":
+    total = merged_view["Kutu Adet"].sum()
+    st.sidebar.metric("Toplam Kutu", f"{int(total):,}")
+    cities = len(merged_view[merged_view["Kutu Adet"] > 0])
+    st.sidebar.metric("Şehir Sayısı", cities)
 else:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📦 Bölge Bazında Toplam")
-        region_stats = region_sum.sort_values("Kutu Adet", ascending=False)
-        for _, row in region_stats.iterrows():
-            st.metric(row["Bölge"], f"{int(row['Kutu Adet']):,}")
+        st.subheader("📦 Bölge Bazında")
+        for _, row in region_sum.sort_values("Kutu Adet", ascending=False).iterrows():
+            if pd.notna(row["Bölge"]):
+                st.metric(row["Bölge"], f"{int(row['Kutu Adet']):,}")
     
     with col2:
-        st.subheader("👥 Ticaret Müdürü Bazında Toplam")
-        manager_stats = df.groupby("Ticaret Müdürü")["Kutu Adet"].sum().sort_values(ascending=False)
-        for manager, total in manager_stats.items():
-            st.metric(manager, f"{int(total):,}")
+        st.subheader("👥 Ticaret Müdürü Bazında")
+        mgr_stats = df.groupby("Ticaret Müdürü")["Kutu Adet"].sum().sort_values(ascending=False)
+        for mgr, total in mgr_stats.items():
+            st.metric(mgr, f"{int(total):,}")
