@@ -200,7 +200,8 @@ def create_figure(gdf, manager):
         ),
         height=750,
         margin=dict(l=0, r=0, t=40, b=0)
-    )
+)
+
 
     
 
@@ -226,5 +227,6 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("📊 Bölge Bazlı Toplamlar")
 st.dataframe(bolge_df, use_container_width=True, hide_index=True)
+
 
 
