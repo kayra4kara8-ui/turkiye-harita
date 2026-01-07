@@ -1,10 +1,7 @@
 import streamlit as st
 import pandas as pd
-import geopandas as gpd
 import plotly.express as px
-import warnings
-
-warnings.filterwarnings("ignore")
+import json
 
 # --------------------------------------------------
 # SAYFA
@@ -22,7 +19,7 @@ if uploaded_file is None:
 df = pd.read_excel(uploaded_file)
 
 # --------------------------------------------------
-# TÜRKÇE NORMALİZASYON (KRİTİK)
+# TÜRKÇE NORMALİZASYON
 # --------------------------------------------------
 def normalize_city(x):
     if pd.isna(x):
@@ -40,52 +37,15 @@ def normalize_city(x):
 df["CITY_CLEAN"] = df["Şehir"].apply(normalize_city)
 
 # --------------------------------------------------
-# HARİTA (GEOJSON)
+# GEOJSON (DÜZ JSON)
 # --------------------------------------------------
-@st.cache_data
-def load_map():
-    gdf = gpd.read_file("data/tr_provinces.geojson")
-    gdf.columns = gdf.columns.str.lower()
+with open("data/tr_provinces.geojson", encoding="utf-8") as f:
+    geojson_data = json.load(f)
 
-    # il adı hangi kolonda olursa olsun yakala
-    for col in ["name", "province", "il", "il_adi"]:
-        if col in gdf.columns:
-            gdf["CITY_RAW"] = gdf[col]
-            break
-    else:
-        st.error("GeoJSON içinde il adı bulunamadı")
-        st.stop()
+# GeoJSON'dan il adlarını çek
+features = geojson_data["features"]
 
-    gdf["CITY_CLEAN"] = gdf["CITY_RAW"].apply(normalize_city)
-    return gdf
-
-turkey_map = load_map()
-
-# --------------------------------------------------
-# MERGE
-# --------------------------------------------------
-merged = turkey_map.merge(
-    df,
-    on="CITY_CLEAN",
-    how="left"
-)
-
-merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
-
-# --------------------------------------------------
-# HARİTA (İL BAZLI)
-# --------------------------------------------------
-fig = px.choropleth(
-    merged,
-    geojson=merged.__geo_interface__,
-    locations=merged.index,
-    color="Kutu Adet",
-    hover_name="Şehir",
-    hover_data=["Bölge", "Kutu Adet"],
-    color_continuous_scale="Blues"
-)
-
-fig.update_geos(fitbounds="locations", visible=False)
-fig.update_layout(margin=dict(l=0, r=0, t=40, b=0))
-
-st.plotly_chart(fig, use_container_width=True)
+city_records = []
+for feat in features:
+    props = feat["properties"]
+    name = props.get("name") or props.get("NAME") or props.ge
