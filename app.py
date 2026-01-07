@@ -20,26 +20,27 @@ st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
 FIX_CITY_MAP = {
     "AGRI": "AĞRI",
     "BARTÄ±N": "BARTIN",
-    "BINGÃ¶L": "BİNGÖL",
+    "BINGÃ¶L": "BINGÖL",
     "DÃ¼ZCE": "DÜZCE",
-    "ELAZIG": "ELAZIĞ",
-    "ESKISEHIR": "ESKİŞEHİR",
+    "ELAZIG": "ELÂZIĞ",
+    "ESKISEHIR": "ESKIŞEHIR",
     "GÃ¼MÃ¼SHANE": "GÜMÜŞHANE",
-    "HAKKARI": "HAKKARİ",
+    "HAKKARI": "HAKKÂRI",
     "ISTANBUL": "İSTANBUL",
-    "IZMIR": "İZMİR",
+    "IZMIR": "İZMIR",
     "IÄ\x9fDIR": "IĞDIR",
+    "K. MARAS'": "KAHRAMANMARAŞ",
     "KARABÃ¼K": "KARABÜK",
     "KINKKALE": "KIRIKKALE",
-    "KIRSEHIR": "KIRŞEHİR",
+    "KIRSEHIR": "KIRŞEHIR",
     "KÃ¼TAHYA": "KÜTAHYA",
     "MUGLA": "MUĞLA",
     "MUS": "MUŞ",
-    "NEVSEHIR": "NEVŞEHİR",
-    "NIGDE": "NİĞDE",
+    "NEVSEHIR": "NEVŞEHIR",
+    "NIGDE": "NIĞDE",
     "SANLIURFA": "ŞANLIURFA",
     "SIRNAK": "ŞIRNAK",
-    "TEKIRDAG": "TEKİRDAĞ",
+    "TEKIRDAG": "TEKIRDAĞ",
     "USAK": "UŞAK",
     "ZINGULDAK": "ZONGULDAK",
     "Ã\x87ANAKKALE": "ÇANAKKALE",
@@ -225,4 +226,5 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("📊 Bölge Bazlı Toplamlar")
 st.dataframe(bolge_df, use_container_width=True, hide_index=True)
+
 
