@@ -1,224 +1,152 @@
-import streamlit as st
+import plotly.express as px
 import geopandas as gpd
 import pandas as pd
-import plotly.graph_objects as go
-import json
+from shapely.geometry import LineString, MultiLineString
 import warnings
 
 warnings.filterwarnings("ignore")
 
-# =============================================================================
-# TÜRKÇE KARAKTER NORMALİZASYONU
-# =============================================================================
-def tr_upper(text):
-    if pd.isna(text):
-        return text
-    text = str(text).strip()
-    return (
-        text.replace("i", "İ")
-            .replace("ı", "I")
-            .upper()
-            .replace("Ğ", "G")
-            .replace("Ş", "S")
-            .replace("Ü", "U")
-            .replace("Ö", "O")
-            .replace("Ç", "C")
-    )
-
-# =============================================================================
-# BOZUK ŞEHİR DÜZELTMELERİ (KRİTİK)
-# =============================================================================
-fix_city_map = {
-    "AGRI": "AGRI",
-    "BARTÄ±N": "BARTIN",
-    "BINGÃ¶L": "BINGOL",
-    "DÃ¼ZCE": "DUZCE",
-    "ELAZIG": "ELAZIG",
-    "ESKISEHIR": "ESKISEHIR",
-    "GÃ¼MÃ¼SHANE": "GUMUSHANE",
-    "HAKKARI": "HAKKARI",
-    "ISTANBUL": "ISTANBUL",
-    "IZMIR": "IZMIR",
-    "IÄ\x9fDIR": "IGDIR",
-    "K. MARAS": "KAHRAMANMARAS",
-    "KARABÃ¼K": "KARABUK",
-    "KINKKALE": "KIRIKKALE",
-    "KIRSEHIR": "KIRSEHIR",
-    "KÃ¼TAHYA": "KUTAHYA",
-    "MUGLA": "MUGLA",
-    "MUS": "MUS",
-    "NEVSEHIR": "NEVSEHIR",
-    "NIGDE": "NIGDE",
-    "SANLIURFA": "SANLIURFA",
-    "SIRNAK": "SIRNAK",
-    "TEKIRDAG": "TEKIRDAG",
-    "USAK": "USAK",
-    "ZINGULDAK": "ZONGULDAK",
-    "Ã\x87ANAKKALE": "CANAKKALE",
-    "Ã\x87ANKIRI": "CANKIRI",
-    "Ã\x87ORUM": "CORUM"
+# ============================================================
+# BÖLGE RENKLERİ (SADECE 5 BÖLGE)
+# ============================================================
+region_colors = {
+    "KUZEY ANADOLU": "#2E8B57",        # yeşil
+    "MARMARA": "#2F6FD6",              # mavi
+    "İÇ ANADOLU": "#8B6B4A",           # açık kahve
+    "BATI ANADOLU": "#2BB0A6",         # turkuaz
+    "GÜNEY DOĞU ANADOLU": "#A05A2C"    # koyu kahve
 }
 
-# =============================================================================
-# BÖLGE RENKLERİ
-# =============================================================================
-REGION_COLORS = {
-    "MARMARA": "#1f77b4",              # Mavi
-    "KARADENIZ": "#2ca02c",             # Yeşil
-    "EGE": "#6baed6",
-    "AKDENIZ": "#ff9f1c",
-    "IC ANADOLU": "#8c564b",            # Kahverengi
-    "DOGU ANADOLU": "#a0522d",
-    "GUNEYDOGU ANADOLU": "#4b2e13",     # Koyu kahve
-    "DIGER": "#cccccc"
-}
+# ============================================================
+# DATA HAZIR (df ve turkey_map zaten yüklü varsayılıyor)
+# turkey_map: GeoJSON -> CITY_CLEAN kolonu var
+# df: Şehir, Bölge, Ticaret Müdürü, Kutu Adet
+# ============================================================
 
-# =============================================================================
-# PAGE
-# =============================================================================
-st.set_page_config(page_title="Türkiye Satış Haritası", layout="wide")
-st.title("🗺️ Türkiye Bölge & İl Bazlı Kutu Adetleri")
+# Şehir–Geo eşleşmesi
+merged_region = turkey_map.merge(
+    df[["Şehir", "Bölge", "Ticaret Müdürü", "Kutu Adet"]].drop_duplicates(),
+    left_on="CITY_CLEAN",
+    right_on="Şehir",
+    how="left"
+)
 
-# =============================================================================
-# LOAD DATA
-# =============================================================================
-@st.cache_data
-def load_excel(file=None):
-    if file:
-        return pd.read_excel(file)
-    return pd.read_excel("Data.xlsx")
+merged_region["Kutu Adet"] = merged_region["Kutu Adet"].fillna(0)
+merged_region["Bölge"] = merged_region["Bölge"].fillna("DİĞER")
 
-@st.cache_resource
-def load_geo():
-    gdf = gpd.read_file("turkey.geojson")
-    gdf["name"] = gdf["name"].apply(tr_upper)
-    return gdf
+# SADECE 5 BÖLGEYİ TUT
+merged_region = merged_region[
+    merged_region["Bölge"].isin(region_colors.keys())
+]
 
-# =============================================================================
-# PREPARE DATA
-# =============================================================================
-def prepare_data(df, gdf):
+# ============================================================
+# BÖLGE HARİTASI (DISSOLVE)
+# ============================================================
+region_map = (
+    merged_region
+    .dissolve(by="Bölge", aggfunc={"Kutu Adet": "sum"})
+    .reset_index()
+)
 
-    df = df.copy()
-    gdf = gdf.copy()
+# ============================================================
+# CHOROPLETH (BÖLGELER)
+# ============================================================
+fig = px.choropleth(
+    region_map,
+    geojson=region_map.__geo_interface__,
+    locations="Bölge",
+    featureidkey="properties.Bölge",
+    color="Bölge",
+    color_discrete_map=region_colors,
+    hover_name="Bölge",
+    hover_data={"Kutu Adet": ":,"}
+)
 
-    # Normalize
-    df["Şehir"] = df["Şehir"].apply(tr_upper)
-    df["Şehir"] = df["Şehir"].replace(fix_city_map)
+fig.update_geos(fitbounds="locations", visible=False)
+fig.update_layout(coloraxis_showscale=False)
 
-    df["Bölge"] = df["Bölge"].apply(tr_upper)
-    df["Ticaret Müdürü"] = df["Ticaret Müdürü"].apply(tr_upper)
+# ============================================================
+# BÖLGE LABEL (MERKEZ)
+# ============================================================
+region_proj = region_map.to_crs(3857)
+region_proj["centroid"] = region_proj.geometry.centroid
+region_lbl = region_proj.to_crs(region_map.crs)
 
-    df["Kutu Adet"] = pd.to_numeric(df["Kutu Adet"], errors="coerce").fillna(0)
+fig.add_scattergeo(
+    lon=region_lbl.centroid.x,
+    lat=region_lbl.centroid.y,
+    text=[
+        f"<b>{r['Bölge']}</b><br>{int(r['Kutu Adet']):,}"
+        for _, r in region_lbl.iterrows()
+    ],
+    mode="text",
+    textfont=dict(size=14, color="black", family="Arial Black"),
+    showlegend=False,
+    hoverinfo="skip"
+)
 
-    # Merge
-    merged = gdf.merge(
-        df,
-        left_on="name",
-        right_on="Şehir",
-        how="left"
-    )
+# ============================================================
+# ŞEHİR HOVER NOKTALARI
+# ============================================================
+city_proj = merged_region.to_crs(3857)
+city_proj["centroid"] = city_proj.geometry.centroid
+city_pts = city_proj.to_crs(merged_region.crs)
 
-    merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
-    merged["Bölge"] = merged["Bölge"].fillna("DIGER")
+fig.add_scattergeo(
+    lon=city_pts.centroid.x,
+    lat=city_pts.centroid.y,
+    mode="markers",
+    marker=dict(size=6, color="rgba(0,0,0,0)"),
+    hoverinfo="text",
+    text=[
+        f"<b>{r['CITY_CLEAN']}</b><br>"
+        f"Bölge: {r['Bölge']}<br>"
+        f"Ticaret Müdürü: {r['Ticaret Müdürü']}<br>"
+        f"Kutu Adet: {int(r['Kutu Adet']):,}"
+        for _, r in city_pts.iterrows()
+    ],
+    showlegend=False
+)
 
-    bolge_df = (
-        merged.groupby("Bölge", as_index=False)["Kutu Adet"]
-        .sum()
-        .sort_values("Kutu Adet", ascending=False)
-    )
+# ============================================================
+# ŞEHİR SINIRLARI
+# ============================================================
+def lines_to_lonlat(geom):
+    lons, lats = [], []
+    if isinstance(geom, LineString):
+        xs, ys = geom.xy
+        lons += list(xs) + [None]
+        lats += list(ys) + [None]
+    elif isinstance(geom, MultiLineString):
+        for line in geom.geoms:
+            xs, ys = line.xy
+            lons += list(xs) + [None]
+            lats += list(ys) + [None]
+    return lons, lats
 
-    return merged, bolge_df
+all_lons, all_lats = [], []
+for g in merged_region.geometry.boundary:
+    lo, la = lines_to_lonlat(g)
+    all_lons += lo
+    all_lats += la
 
-# =============================================================================
-# FIGURE
-# =============================================================================
-def create_figure(gdf, manager):
+fig.add_scattergeo(
+    lon=all_lons,
+    lat=all_lats,
+    mode="lines",
+    line=dict(width=0.8, color="rgba(60,60,60,0.7)"),
+    hoverinfo="skip",
+    showlegend=False
+)
 
-    if manager != "TÜMÜ":
-        gdf = gdf[gdf["Ticaret Müdürü"] == manager]
+# ============================================================
+# BAŞLIK
+# ============================================================
+fig.update_layout(
+    title="Türkiye – Bölge Bazlı Kutu Adetleri",
+    margin=dict(l=0, r=0, t=60, b=0),
+    paper_bgcolor="white",
+    plot_bgcolor="white"
+)
 
-    fig = go.Figure()
-
-    # İl bazlı harita
-    fig.add_choropleth(
-        geojson=json.loads(gdf.to_json()),
-        locations=gdf.index,
-        z=gdf["Kutu Adet"],
-        colorscale="Greys",
-        marker_line_color="black",
-        marker_line_width=0.4,
-        customdata=gdf[["name", "Bölge", "Kutu Adet"]],
-        hovertemplate=(
-            "<b>%{customdata[0]}</b><br>"
-            "Bölge: %{customdata[1]}<br>"
-            "Kutu Adet: %{customdata[2]:,}"
-            "<extra></extra>"
-        ),
-        showscale=False
-    )
-
-    # Bölge alanları (renkli)
-    region_df = gdf.dissolve(by="Bölge", aggfunc={"Kutu Adet": "sum"}).reset_index()
-    region_df["color"] = region_df["Bölge"].map(REGION_COLORS).fillna("#cccccc")
-
-    for _, r in region_df.iterrows():
-        fig.add_choropleth(
-            geojson=json.loads(region_df.to_json()),
-            locations=[r["Bölge"]],
-            z=[1],
-            featureidkey="properties.Bölge",
-            colorscale=[[0, r["color"]], [1, r["color"]]],
-            showscale=False,
-            marker_line_width=1,
-            hovertemplate=f"<b>{r['Bölge']}</b><br>Toplam: {int(r['Kutu Adet']):,}<extra></extra>"
-        )
-
-    # Bölge label
-    rp = region_df.to_crs(3857)
-    rp["centroid"] = rp.geometry.centroid
-    rp = rp.to_crs(4326)
-
-    fig.add_scattergeo(
-        lon=rp.centroid.x,
-        lat=rp.centroid.y,
-        mode="text",
-        text=[f"<b>{r['Bölge']}</b><br>{int(r['Kutu Adet']):,}" for _, r in rp.iterrows()],
-        textfont=dict(color="black", size=13),
-        hoverinfo="skip",
-        showlegend=False
-    )
-
-    fig.update_layout(
-        geo=dict(
-            scope="europe",
-            center=dict(lat=39, lon=35),
-            projection_scale=4.7,
-            visible=False
-        ),
-        height=750,
-        margin=dict(l=0, r=0, t=30, b=0)
-    )
-
-    return fig
-
-# =============================================================================
-# APP FLOW
-# =============================================================================
-st.sidebar.header("📂 Excel Yükle")
-uploaded = st.sidebar.file_uploader("Excel Dosyası", ["xlsx", "xls"])
-
-df = load_excel(uploaded)
-geo = load_geo()
-
-merged, bolge_df = prepare_data(df, geo)
-
-st.sidebar.header("🔍 Filtre")
-managers = ["TÜMÜ"] + sorted(merged["Ticaret Müdürü"].dropna().unique())
-selected_manager = st.sidebar.selectbox("Ticaret Müdürü", managers)
-
-fig = create_figure(merged, selected_manager)
-st.plotly_chart(fig, use_container_width=True)
-
-st.subheader("📊 Bölge Bazlı Toplamlar")
-st.dataframe(bolge_df, use_container_width=True, hide_index=True)
+fig.show()
