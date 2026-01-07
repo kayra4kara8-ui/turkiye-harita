@@ -7,24 +7,23 @@ import unicodedata
 from shapely.geometry import LineString, MultiLineString
 
 # =============================================================================
-# PAGE CONFIG
+# PAGE
 # =============================================================================
 st.set_page_config(page_title="Türkiye Satış Haritası", layout="wide")
 st.title("🗺️ Türkiye – Bölge & Şehir Bazlı Kutu Adetleri")
 
 # =============================================================================
-# CONSTANTS
+# COLORS
 # =============================================================================
 REGION_COLORS = {
-    "MARMARA": "#2F6FD6",
-    "İÇ ANADOLU": "#8B6B4A",
-    "BATI ANADOLU": "#2BB0A6",
-    "KUZEY ANADOLU": "#2E8B57",
-    "GÜNEY DOĞU ANADOLU": "#A05A2C"
+    "MARMARA": "#1f4fd8",
+    "KARADENİZ": "#2e8b57",
+    "İÇ ANADOLU": "#8b6b4a",
+    "GÜNEYDOĞU ANADOLU": "#5c3a21"
 }
 
 # =============================================================================
-# CITY NORMALIZATION (KRİTİK)
+# NORMALIZE
 # =============================================================================
 def normalize_city(s):
     if pd.isna(s):
@@ -32,29 +31,34 @@ def normalize_city(s):
     s = str(s).upper().strip()
     s = unicodedata.normalize("NFKD", s)
     s = "".join(c for c in s if not unicodedata.combining(c))
-    s = s.replace("I", "İ")
+    s = (
+        s.replace("I", "İ")
+         .replace("Ğ", "G")
+         .replace("Ü", "U")
+         .replace("Ş", "S")
+         .replace("Ö", "O")
+         .replace("Ç", "C")
+    )
     return s
 
 # =============================================================================
-# DATA LOADING
+# LOAD
 # =============================================================================
 @st.cache_data
-def load_excel(uploaded_file=None):
-    if uploaded_file is not None:
-        return pd.read_excel(uploaded_file)
-    return pd.read_excel("Data.xlsx")
+def load_excel(file):
+    return pd.read_excel(file)
 
 @st.cache_resource
-def load_geojson():
+def load_geo():
     return gpd.read_file("turkey.geojson")
 
 # =============================================================================
-# DATA PREPARATION
+# PREPARE
 # =============================================================================
 @st.cache_data
-def prepare_data(df, _gdf):
+def prepare(df, gdf):
     df = df.copy()
-    gdf = _gdf.copy()
+    gdf = gdf.copy()
 
     df["CITY_KEY"] = df["Şehir"].apply(normalize_city)
     df["Bölge"] = df["Bölge"].str.upper()
@@ -62,18 +66,20 @@ def prepare_data(df, _gdf):
 
     gdf["CITY_KEY"] = gdf["name"].apply(normalize_city)
 
-    merged = gdf.merge(
-        df,
-        on="CITY_KEY",
-        how="left"
+    city_total = (
+        df.groupby(["CITY_KEY", "Şehir", "Bölge"], as_index=False)
+        ["Kutu Adet"].sum()
     )
 
+    merged = gdf.merge(city_total, on="CITY_KEY", how="left")
+
+    merged["Bölge"] = merged["Bölge"].fillna("BİLİNMİYOR")
     merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
 
     return merged
 
 # =============================================================================
-# GEOMETRY HELPERS
+# GEOM
 # =============================================================================
 def lines_to_lonlat(geom):
     lons, lats = [], []
@@ -89,15 +95,15 @@ def lines_to_lonlat(geom):
     return lons, lats
 
 # =============================================================================
-# MAP CREATION
+# FIGURE
 # =============================================================================
-def create_figure(gdf, selected_manager):
+def create_fig(gdf):
     fig = go.Figure()
 
-    # İl sınırları
+    # Borders
     lons, lats = [], []
-    for geom in gdf.geometry.boundary:
-        lo, la = lines_to_lonlat(geom)
+    for g in gdf.geometry.boundary:
+        lo, la = lines_to_lonlat(g)
         lons += lo
         lats += la
 
@@ -106,17 +112,12 @@ def create_figure(gdf, selected_manager):
         lat=lats,
         mode="lines",
         line=dict(color="rgba(80,80,80,0.5)", width=0.8),
-        hoverinfo="skip",
-        showlegend=False
+        hoverinfo="skip"
     )
 
-    # Müdür filtresi
-    if selected_manager != "Tümü":
-        gdf = gdf[gdf["Ticaret Müdürü"] == selected_manager]
-
-    # Bölge bazlı dissolve
+    # REGION
     region_df = (
-        gdf.dropna(subset=["Bölge"])
+        gdf[gdf["Bölge"] != "BİLİNMİYOR"]
         .dissolve(by="Bölge", aggfunc={"Kutu Adet": "sum"})
         .reset_index()
     )
@@ -126,34 +127,31 @@ def create_figure(gdf, selected_manager):
             geojson=json.loads(region_df.to_json()),
             locations=region_df["Bölge"],
             featureidkey="properties.Bölge",
-            z=region_df["Kutu Adet"],
-            colorscale="Blues",
+            z=region_df["Bölge"].map(lambda x: 1),
+            colorscale=[
+                [0, REGION_COLORS[r]] for r in region_df["Bölge"]
+            ],
             showscale=False,
-            hovertemplate="<b>%{location}</b><br>Kutu Adet: %{z:,}<extra></extra>"
+            hovertemplate="<b>%{location}</b><br>Toplam: %{customdata:,}<extra></extra>",
+            customdata=region_df["Kutu Adet"]
         )
     )
 
-    # Şehir centroid + hover / tıklama bilgisi
-    city_points = gdf.to_crs(3857)
-    city_points["centroid"] = city_points.geometry.centroid
-    city_points = city_points.to_crs(gdf.crs)
+    # CITY POINTS
+    cp = gdf.to_crs(3857)
+    cp["centroid"] = cp.geometry.centroid
+    cp = cp.to_crs(gdf.crs)
 
     fig.add_scattergeo(
-        lon=city_points.centroid.x,
-        lat=city_points.centroid.y,
+        lon=cp.centroid.x,
+        lat=cp.centroid.y,
         mode="markers",
         marker=dict(size=6, color="black"),
         text=[
-            f"""
-            <b>{r['Şehir']}</b><br>
-            Bölge: {r['Bölge']}<br>
-            Müdür: {r['Ticaret Müdürü']}<br>
-            Kutu Adet: {int(r['Kutu Adet']):,}
-            """
-            for _, r in city_points.iterrows()
+            f"<b>{r['Şehir']}</b><br>Kutu Adet: {int(r['Kutu Adet']):,}"
+            for _, r in cp.iterrows()
         ],
-        hovertemplate="%{text}<extra></extra>",
-        showlegend=False
+        hovertemplate="%{text}<extra></extra>"
     )
 
     fig.update_layout(
@@ -170,19 +168,15 @@ def create_figure(gdf, selected_manager):
     return fig
 
 # =============================================================================
-# APP FLOW
+# APP
 # =============================================================================
-st.sidebar.header("📂 Dosya Yükleme")
-uploaded_file = st.sidebar.file_uploader("Excel Dosyası", type=["xlsx", "xls"])
+uploaded = st.sidebar.file_uploader("Excel Yükle", type=["xlsx", "xls"])
+if uploaded is None:
+    st.stop()
 
-df = load_excel(uploaded_file)
-gdf = load_geojson()
+df = load_excel(uploaded)
+gdf = load_geo()
+merged = prepare(df, gdf)
 
-merged = prepare_data(df, gdf)
-
-st.sidebar.header("🔍 Filtre")
-managers = ["Tümü"] + sorted(merged["Ticaret Müdürü"].dropna().unique())
-selected_manager = st.sidebar.selectbox("Ticaret Müdürü", managers)
-
-fig = create_figure(merged, selected_manager)
+fig = create_fig(merged)
 st.plotly_chart(fig, use_container_width=True)
