@@ -24,7 +24,7 @@ REGION_COLORS = {
     "İÇ ANADOLU": "#A0522D",
     "KUZEY ANADOLU": "#10B981",
     "DOĞU ANADOLU": "#FFA07A",
-    "GÜNEYDOĞU ANADOLU": "#5D4037",
+    "GÜNEY DOĞU ANADOLU": "#5D4037",
     "DİĞER": "#CCCCCC"
 }
 
@@ -275,4 +275,5 @@ st.subheader("📊 Bölge Bazlı Toplamlar")
 bolge_styled = bolge_df.copy()
 bolge_styled["Renk"] = bolge_styled["Bölge"].map(REGION_COLORS)
 st.dataframe(bolge_styled, use_container_width=True, hide_index=True)
+
 
