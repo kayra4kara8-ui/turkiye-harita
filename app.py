@@ -61,7 +61,6 @@ def load_turkey_map():
 # =============================================================================
 # DATA PREPARATION
 # =============================================================================
-@st.cache_data
 def prepare_data(df, turkey_map):
 
     df = df.copy()
@@ -227,3 +226,4 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("📋 Bölge Bazlı Detaylar")
 st.dataframe(bolge_df, use_container_width=True, hide_index=True)
+
