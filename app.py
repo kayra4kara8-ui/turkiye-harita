@@ -102,7 +102,6 @@ def prepare_data(df, gdf):
 
     merged = gdf.merge(df, on="CITY_KEY", how="left")
 
-    # GARANTİ KOLONLAR
     merged["Şehir"] = merged["fixed_name"]
     merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
     merged["Bölge"] = merged["Bölge"].fillna("DİĞER")
@@ -114,7 +113,14 @@ def prepare_data(df, gdf):
         .sort_values("Kutu Adet", ascending=False)
     )
 
-    return merged, bolge_df
+    # 🔴 Bölge geometry + centroid (label için)
+    bolge_geo = (
+        merged.dissolve(by="Bölge", aggfunc={"Kutu Adet": "sum"})
+        .reset_index()
+    )
+    bolge_geo["centroid"] = bolge_geo.geometry.centroid
+
+    return merged, bolge_df, bolge_geo
 
 # =============================================================================
 # GEOMETRY HELPERS
@@ -135,38 +141,39 @@ def lines_to_lonlat(geom):
 # =============================================================================
 # FIGURE
 # =============================================================================
-def create_figure(gdf, manager):
+def create_figure(gdf, bolge_geo, manager):
 
     gdf = gdf.copy()
 
     if manager != "TÜMÜ":
         gdf = gdf[gdf["Ticaret Müdürü"] == manager]
 
+    # 🔴 Bölge kodları (renk için)
+    region_map = {b: i for i, b in enumerate(gdf["Bölge"].unique())}
+    gdf["REGION_CODE"] = gdf["Bölge"].map(region_map)
+
     fig = go.Figure()
 
+    # İL RENKLENDİRME (BÖLGEYE GÖRE)
     fig.add_choropleth(
         geojson=json.loads(gdf.to_json()),
         locations=gdf.index,
-        z=gdf["Kutu Adet"],
-        colorscale="YlGnBu",
+        z=gdf["REGION_CODE"],
+        colorscale="Set3",
         marker_line_color="black",
         marker_line_width=0.5,
-        showscale=True,
+        showscale=False,
         customdata=list(
-            zip(
-                gdf["Şehir"],
-                gdf["Bölge"],
-                gdf["Kutu Adet"]
-            )
+            zip(gdf["Şehir"], gdf["Bölge"], gdf["Kutu Adet"])
         ),
-        hovertemplate=(
+        hovertemplate=
             "<b>%{customdata[0]}</b><br>"
             "Bölge: %{customdata[1]}<br>"
             "Kutu Adet: %{customdata[2]:,}"
             "<extra></extra>"
-        )
     )
 
+    # İL SINIRLARI
     lons, lats = [], []
     for geom in gdf.geometry.boundary:
         lo, la = lines_to_lonlat(geom)
@@ -178,6 +185,16 @@ def create_figure(gdf, manager):
         lat=lats,
         mode="lines",
         line=dict(color="rgba(60,60,60,0.6)", width=0.7),
+        hoverinfo="skip"
+    )
+
+    # 🔴 BÖLGE ADI + TOPLAM KUTU
+    fig.add_scattergeo(
+        lon=bolge_geo["centroid"].x,
+        lat=bolge_geo["centroid"].y,
+        mode="text",
+        text=bolge_geo["Bölge"] + "<br>" + bolge_geo["Kutu Adet"].astype(int).astype(str),
+        textfont=dict(size=12, color="black"),
         hoverinfo="skip"
     )
 
@@ -204,15 +221,14 @@ uploaded = st.sidebar.file_uploader("Excel Dosyası", ["xlsx", "xls"])
 df = load_excel(uploaded)
 geo = load_geo()
 
-merged, bolge_df = prepare_data(df, geo)
+merged, bolge_df, bolge_geo = prepare_data(df, geo)
 
 st.sidebar.header("🔍 Filtre")
 managers = ["TÜMÜ"] + sorted(merged["Ticaret Müdürü"].unique())
 selected_manager = st.sidebar.selectbox("Ticaret Müdürü", managers)
 
-fig = create_figure(merged, selected_manager)
+fig = create_figure(merged, bolge_geo, selected_manager)
 st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("📊 Bölge Bazlı Toplamlar")
 st.dataframe(bolge_df, use_container_width=True, hide_index=True)
-
