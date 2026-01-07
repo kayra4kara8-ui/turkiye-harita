@@ -4,6 +4,7 @@ import geopandas as gpd
 import plotly.express as px
 from shapely.geometry import LineString, MultiLineString
 import warnings
+import os
 
 warnings.filterwarnings("ignore")
 
@@ -45,15 +46,23 @@ df = pd.read_excel(uploaded_file)
 df["Şehir"] = df["Şehir"].str.upper()
 
 # --------------------------------------------------
-# HARİTA OKU (FIONA ZORUNLU)
+# HARİTA OKU (SHP AUTO-DETECT)
 # --------------------------------------------------
 @st.cache_data
 def load_map():
-    gdf = gpd.read_file(
-        "data/tr_shp/tr.shp",
-        engine="fiona"
-    )
+    shp_dir = "data/tr_shp"
+    shp_files = [f for f in os.listdir(shp_dir) if f.lower().endswith(".shp")]
+
+    if not shp_files:
+        st.error("Shapefile (.shp) bulunamadı!")
+        st.stop()
+
+    shp_path = os.path.join(shp_dir, shp_files[0])
+
+    gdf = gpd.read_file(shp_path)
+    gdf.columns = gdf.columns.str.lower()
     gdf["name"] = gdf["name"].str.upper()
+
     return gdf
 
 turkey_map = load_map()
@@ -189,5 +198,6 @@ fig.add_scattergeo(
 )
 
 st.plotly_chart(fig, use_container_width=True)
+
 
 
