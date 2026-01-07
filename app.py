@@ -12,28 +12,10 @@ warnings.filterwarnings("ignore")
 # PAGE CONFIG
 # =============================================================================
 st.set_page_config(page_title="Türkiye Satış Haritası", layout="wide")
-st.title("🗺️ Türkiye - İl & Bölge Bazlı Kutu Adetleri")
+st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
 
 # =============================================================================
-# TÜRKÇE KARAKTER NORMALİZASYONU
-# =============================================================================
-def tr_upper(text):
-    if pd.isna(text):
-        return text
-    text = str(text).strip()
-    return (
-        text.replace("i", "İ")
-            .replace("ı", "I")
-            .upper()
-            .replace("Ğ", "G")
-            .replace("Ş", "S")
-            .replace("Ü", "U")
-            .replace("Ö", "O")
-            .replace("Ç", "C")
-    )
-
-# =============================================================================
-# CITY FIX MAP (ENCODING HATALARI)
+# ŞEHİR DÜZELTME MAP
 # =============================================================================
 FIX_CITY_MAP = {
     "AGRI": "AĞRI",
@@ -43,10 +25,12 @@ FIX_CITY_MAP = {
     "ELAZIG": "ELAZIĞ",
     "ESKISEHIR": "ESKİŞEHİR",
     "GÃ¼MÃ¼SHANE": "GÜMÜŞHANE",
+    "HAKKARI": "HAKKARİ",
     "ISTANBUL": "İSTANBUL",
     "IZMIR": "İZMİR",
     "IÄ\x9fDIR": "IĞDIR",
     "KARABÃ¼K": "KARABÜK",
+    "KINKKALE": "KIRIKKALE",
     "KIRSEHIR": "KIRŞEHİR",
     "KÃ¼TAHYA": "KÜTAHYA",
     "MUGLA": "MUĞLA",
@@ -64,33 +48,42 @@ FIX_CITY_MAP = {
 }
 
 # =============================================================================
-# DATA LOADING
+# BÖLGE RENKLERİ (5 BÖLGE)
+# =============================================================================
+REGION_COLORS = {
+    "MARMARA": "#2F6FD6",
+    "KUZEY ANADOLU": "#2E8B57",
+    "BATI ANADOLU": "#2BB0A6",
+    "İÇ ANADOLU": "#8B6B4A",
+    "GÜNEY DOĞU ANADOLU": "#A05A2C"
+}
+
+# =============================================================================
+# DATA LOAD
 # =============================================================================
 @st.cache_data
-def load_excel(uploaded_file=None):
-    if uploaded_file is not None:
-        return pd.read_excel(uploaded_file)
+def load_excel(file=None):
+    if file is not None:
+        return pd.read_excel(file)
     return pd.read_excel("Data.xlsx")
 
 @st.cache_resource
-def load_turkey_map():
+def load_geo():
     gdf = gpd.read_file("turkey.geojson")
-    gdf["name"] = gdf["name"].apply(tr_upper)
-    gdf["name"] = gdf["name"].replace(FIX_CITY_MAP)
+    gdf["name"] = gdf["name"].str.upper().replace(FIX_CITY_MAP)
     return gdf
 
 # =============================================================================
-# DATA PREPARATION
+# DATA PREP (CACHE YOK – HATA ÇIKMASIN DİYE)
 # =============================================================================
-@st.cache_data
-def prepare_data(df, turkey_map):
+def prepare_data(df, gdf):
 
     df = df.copy()
-    gdf = turkey_map.copy()
+    gdf = gdf.copy()
 
-    df["Şehir"] = df["Şehir"].apply(tr_upper).replace(FIX_CITY_MAP)
-    df["Bölge"] = df["Bölge"].apply(tr_upper)
-    df["Ticaret Müdürü"] = df["Ticaret Müdürü"].apply(tr_upper)
+    df["Şehir"] = df["Şehir"].str.upper().replace(FIX_CITY_MAP)
+    df["Bölge"] = df["Bölge"].str.upper()
+    df["Ticaret Müdürü"] = df["Ticaret Müdürü"].str.upper()
     df["Kutu Adet"] = pd.to_numeric(df["Kutu Adet"], errors="coerce").fillna(0)
 
     merged = gdf.merge(
@@ -113,54 +106,86 @@ def prepare_data(df, turkey_map):
     return merged, bolge_df
 
 # =============================================================================
+# GEOMETRY HELPERS
+# =============================================================================
+def lines_to_lonlat(geom):
+    lons, lats = [], []
+    if isinstance(geom, LineString):
+        xs, ys = geom.xy
+        lons += list(xs) + [None]
+        lats += list(ys) + [None]
+    elif isinstance(geom, MultiLineString):
+        for line in geom.geoms:
+            xs, ys = line.xy
+            lons += list(xs) + [None]
+            lats += list(ys) + [None]
+    return lons, lats
+
+# =============================================================================
 # FIGURE
 # =============================================================================
-def create_figure(gdf, selected_manager):
+def create_figure(gdf, manager):
 
-    if selected_manager != "TÜMÜ":
-        gdf = gdf[gdf["Ticaret Müdürü"] == selected_manager]
+    if manager != "TÜMÜ":
+        gdf = gdf[gdf["Ticaret Müdürü"] == manager]
 
     fig = go.Figure()
 
-    # =======================
-    # IL BAZLI CHOROPLETH
-    # =======================
+    # ==========================
+    # İL BAZLI CHOROPLETH (HOVER VAR)
+    # ==========================
     fig.add_choropleth(
         geojson=json.loads(gdf.to_json()),
         locations=gdf.index,
         z=gdf["Kutu Adet"],
-        colorscale="YlOrRd",
+        colorscale="Blues",
         marker_line_color="black",
-        marker_line_width=0.6,
-        showscale=True,
-        hovertemplate=
+        marker_line_width=0.4,
+        hovertemplate=(
             "<b>%{customdata[0]}</b><br>"
             "Bölge: %{customdata[1]}<br>"
             "Kutu Adet: %{customdata[2]:,}"
-            "<extra></extra>",
-        customdata=gdf[["Şehir", "Bölge", "Kutu Adet"]]
+            "<extra></extra>"
+        ),
+        customdata=gdf[["Şehir", "Bölge", "Kutu Adet"]],
+        showscale=False
     )
 
-    # =======================
-    # IL SINIRLARI
-    # =======================
+    # ==========================
+    # BÖLGE LABEL
+    # ==========================
+    region_df = gdf.dissolve(by="Bölge", aggfunc={"Kutu Adet": "sum"}).reset_index()
+    rp = region_df.to_crs(3857)
+    rp["centroid"] = rp.geometry.centroid
+    rp = rp.to_crs(4326)
+
+    fig.add_scattergeo(
+        lon=rp.centroid.x,
+        lat=rp.centroid.y,
+        mode="text",
+        text=[
+            f"<b>{r['Bölge']}</b><br>{int(r['Kutu Adet']):,}"
+            for _, r in rp.iterrows()
+        ],
+        textfont=dict(size=13, color="black"),
+        hoverinfo="skip",
+        showlegend=False
+    )
+
+    # ==========================
+    # İL SINIRLARI
+    # ==========================
     lons, lats = [], []
     for geom in gdf.geometry.boundary:
-        if isinstance(geom, LineString):
-            xs, ys = geom.xy
-            lons += list(xs) + [None]
-            lats += list(ys) + [None]
-        elif isinstance(geom, MultiLineString):
-            for line in geom.geoms:
-                xs, ys = line.xy
-                lons += list(xs) + [None]
-                lats += list(ys) + [None]
+        lo, la = lines_to_lonlat(geom)
+        lons += lo
+        lats += la
 
     fig.add_scattergeo(
         lon=lons,
         lat=lats,
         mode="lines",
-        line=dict(color="rgba(90,90,90,0.6)", width=0.7),
+        line=dict(color="rgba(80,80,80,0.5)", width=0.6),
         hoverinfo="skip",
         showlegend=False
     )
@@ -172,7 +197,7 @@ def create_figure(gdf, selected_manager):
             projection_scale=4.7,
             visible=False
         ),
-        height=720,
+        height=750,
         margin=dict(l=0, r=0, t=40, b=0)
     )
 
@@ -182,12 +207,12 @@ def create_figure(gdf, selected_manager):
 # APP FLOW
 # =============================================================================
 st.sidebar.header("📂 Excel Yükle")
-uploaded_file = st.sidebar.file_uploader("Excel Dosyası", ["xlsx", "xls"])
+uploaded = st.sidebar.file_uploader("Excel Dosyası", ["xlsx", "xls"])
 
-df = load_excel(uploaded_file)
-turkey_map = load_turkey_map()
+df = load_excel(uploaded)
+geo = load_geo()
 
-merged, bolge_df = prepare_data(df, turkey_map)
+merged, bolge_df = prepare_data(df, geo)
 
 st.sidebar.header("🔍 Filtre")
 managers = ["TÜMÜ"] + sorted(merged["Ticaret Müdürü"].dropna().unique())
