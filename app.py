@@ -39,7 +39,7 @@ df["CITY_CLEAN"] = df["Şehir"].apply(normalize_city)
 # --------------------------------------------------
 # GEOJSON (DÜZ JSON)
 # --------------------------------------------------
-with open("data/tr_provinces.geojson", encoding="utf-8") as f:
+with open("data/tr.geojson", encoding="utf-8") as f:
     geojson_data = json.load(f)
 
 # GeoJSON'dan il adlarını çek
@@ -48,4 +48,37 @@ features = geojson_data["features"]
 city_records = []
 for feat in features:
     props = feat["properties"]
-    name = props.get("name") or props.get("NAME") or props.ge
+    name = props.get("name") or props.get("NAME") or props.get("province")
+    city_records.append({
+        "CITY_CLEAN": normalize_city(name),
+        "geometry": feat["geometry"]
+    })
+
+geo_df = pd.DataFrame(city_records)
+
+# --------------------------------------------------
+# MERGE
+# --------------------------------------------------
+merged = geo_df.merge(df, on="CITY_CLEAN", how="left")
+merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
+
+# --------------------------------------------------
+# CHOROPLETH
+# --------------------------------------------------
+fig = px.choropleth(
+    merged,
+    geojson=geojson_data,
+    locations=merged.index,
+    color="Kutu Adet",
+    hover_name="Şehir",
+    hover_data={
+        "Bölge": True,
+        "Kutu Adet": ":,"
+    },
+    color_continuous_scale="Blues"
+)
+
+fig.update_geos(fitbounds="locations", visible=False)
+fig.update_layout(margin=dict(l=0, r=0, t=40, b=0))
+
+st.plotly_chart(fig, use_container_width=True)
