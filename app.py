@@ -311,17 +311,33 @@ def create_figure(gdf, manager, view_mode, pf_toplam_kutu):
 # =============================================================================
 # APP FLOW
 # =============================================================================
-st.sidebar.header("📂 Excel Yükle")
-uploaded = st.sidebar.file_uploader("Excel Dosyası", ["xlsx", "xls"])
+st.sidebar.header("📂 Excel Dosyaları Yükle")
 
-df = load_excel(uploaded)
+# Çoklu dosya yükleme
+uploaded_files = st.sidebar.file_uploader(
+    "Excel Dosyalarını Seçin (Birden fazla seçebilirsiniz)", 
+    ["xlsx", "xls"],
+    accept_multiple_files=True
+)
+
+df = None
 geo = load_geo()
 
-# Excel dosyası yüklenmediyse uyarı göster
-if uploaded is None:
-    st.warning("⚠️ Lütfen sol taraftan bir Excel dosyası yükleyin!")
+if not uploaded_files:
+    st.warning("⚠️ Lütfen sol taraftan bir veya daha fazla Excel dosyası yükleyin!")
     st.info("📋 Excel dosyası şu kolonları içermelidir: **Şehir**, **Bölge**, **Ticaret Müdürü**, **Kutu Adet**, **Toplam Adet**")
     st.stop()
+
+# Birden fazla dosya varsa seçim ekle
+if len(uploaded_files) > 1:
+    file_names = [f.name for f in uploaded_files]
+    selected_file_name = st.sidebar.selectbox("📊 Analiz Edilecek Dosyayı Seçin", file_names)
+    selected_file = next(f for f in uploaded_files if f.name == selected_file_name)
+    df = load_excel(selected_file)
+    st.sidebar.success(f"✅ Seçili: {selected_file_name}")
+else:
+    df = load_excel(uploaded_files[0])
+    st.sidebar.success(f"✅ Yüklendi: {uploaded_files[0].name}")
 
 merged, bolge_df, pf_toplam_kutu, toplam_kutu = prepare_data(df, geo)
 
@@ -445,7 +461,24 @@ investment_df = calculate_investment_strategy(display_merged)
 st.subheader("📊 Bölge Bazlı Performans")
 bolge_display = display_bolge[display_bolge["PF Kutu"] > 0].copy()
 bolge_display = bolge_display[["Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %"]]
-st.dataframe(bolge_display, use_container_width=True, hide_index=True)
+
+st.dataframe(
+    bolge_display, 
+    use_container_width=True, 
+    hide_index=True,
+    column_config={
+        "PF Kutu": st.column_config.NumberColumn(
+            "PF Kutu",
+            format="%,d"
+        ),
+        "Toplam Kutu": st.column_config.NumberColumn(
+            "Toplam Kutu",
+            format="%,d"
+        ),
+        "PF Pay %": st.column_config.NumberColumn(format="%.2f%%"),
+        "Pazar Payı %": st.column_config.NumberColumn(format="%.2f%%"),
+    }
+)
 
 st.subheader("🎯 Yatırım Stratejisi Analizi")
 if len(investment_df) > 0:
@@ -494,8 +527,14 @@ st.dataframe(
     use_container_width=True,
     hide_index=False,
     column_config={
-        "PF Kutu": st.column_config.NumberColumn(format="%d"),
-        "Toplam Kutu": st.column_config.NumberColumn(format="%d"),
+        "PF Kutu": st.column_config.NumberColumn(
+            "PF Kutu",
+            format="%,d"
+        ),
+        "Toplam Kutu": st.column_config.NumberColumn(
+            "Toplam Kutu",
+            format="%,d"
+        ),
         "PF Pay %": st.column_config.NumberColumn(format="%.2f%%"),
         "Pazar Payı %": st.column_config.ProgressColumn(
             "Pazar Payı %",
