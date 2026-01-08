@@ -119,11 +119,21 @@ def prepare_data(df, gdf):
     # PF Kutu Adet (bizim satışlarımız)
     df["PF Kutu"] = pd.to_numeric(df["Kutu Adet"], errors="coerce").fillna(0)
     
-    # Toplam Adet kolonunu kontrol et (pazar toplam)
-    if "Toplam Adet" in df.columns:
-        df["Toplam Kutu"] = pd.to_numeric(df["Toplam Adet"], errors="coerce").fillna(0)
+    # Toplam Adet kolonunu farklı isimlerde ara
+    toplam_col = None
+    possible_names = ["Toplam Adet", "TOPLAM ADET", "Toplam", "TOPLAM", "Total", "Market Total"]
+    
+    for col_name in possible_names:
+        if col_name in df.columns:
+            toplam_col = col_name
+            break
+    
+    if toplam_col:
+        df["Toplam Kutu"] = pd.to_numeric(df[toplam_col], errors="coerce").fillna(0)
     else:
-        df["Toplam Kutu"] = 0
+        # Eğer Toplam Adet kolonu yoksa, PF Kutu'nun 3 katı olarak varsayalım (örnek)
+        df["Toplam Kutu"] = df["PF Kutu"] * 3
+        st.sidebar.warning("⚠️ 'Toplam Adet' kolonu bulunamadı, varsayılan değerler kullanılıyor.")
 
     # Toplamları hesapla
     pf_toplam_kutu = df["PF Kutu"].sum()
@@ -357,6 +367,8 @@ st.subheader("🏙️ Şehir Bazlı Detay Analiz")
 # Şehir bazında tabloyu hazırla
 city_df = merged[merged["PF Kutu"] > 0][["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Ticaret Müdürü"]].copy()
 city_df = city_df.sort_values("PF Kutu", ascending=False).reset_index(drop=True)
+# Index'i 1'den başlat
+city_df.index = city_df.index + 1
 
 st.caption("🏆 Şehirler PF Kutu performansına göre sıralanmıştır")
 st.dataframe(
