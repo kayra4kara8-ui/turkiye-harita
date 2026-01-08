@@ -235,7 +235,7 @@ def create_figure(gdf, manager, view_mode, total_kutu):
                 lon, lat = get_region_center(region_gdf)
                 label_lons.append(lon)
                 label_lats.append(lat)
-                label_texts.append(f"<b>{region}</b><br>{total:,.0f} kutu<br>%{percent:.1f}")
+                label_texts.append(f"<b>{region}</b><br>{total:,.0f} %{percent:.1f}")
 
         fig.add_scattergeo(
             lon=label_lons,
@@ -342,5 +342,6 @@ st.subheader("🏙️ Şehir Bazlı Detaylar")
 city_df = merged[merged["Kutu Adet"] > 0][["Şehir", "Bölge", "Kutu Adet", "Şehir %", "Ticaret Müdürü"]].copy()
 city_df = city_df.sort_values("Kutu Adet", ascending=False).reset_index(drop=True)
 st.dataframe(city_df, use_container_width=True, hide_index=True)
+
 
 
