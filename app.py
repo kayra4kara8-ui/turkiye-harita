@@ -19,10 +19,10 @@ st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
 # =============================================================================
 REGION_COLORS = {
     "MARMARA": "#0EA5E9",              # Sky Blue - Deniz ve boğazlar
-    "BATI ANADOLU": "#14B8A6",         # BAL SARI - Bal rengi
+    "BATI ANADOLU": "#FCD34D",         # BAL SARI - Bal rengi
     "EGE": "#FCD34D",                  # BAL SARI (Batı Anadolu ile aynı)
     "İÇ ANADOLU": "#F59E0B",           # Amber - Kuru bozkır
-    "GÜNEY DOĞU ANADOLU": "#E07A5F",    # Red - Sıcak ve kuru
+    "GÜNEYDOĞU ANADOLU": "#DC2626",    # Red - Sıcak ve kuru
     "KUZEY ANADOLU": "#059669",        # Emerald - Yemyeşil ormanlar
     "KARADENİZ": "#059669",            # Emerald (Kuzey Anadolu ile aynı)
     "AKDENİZ": "#8B5CF6",              # Violet - Akdeniz
@@ -156,7 +156,7 @@ def get_region_center(gdf_region):
 # =============================================================================
 # FIGURE
 # =============================================================================
-def create_figure(gdf, manager):
+def create_figure(gdf, manager, view_mode):
 
     gdf = gdf.copy()
 
@@ -210,8 +210,9 @@ def create_figure(gdf, manager):
         showlegend=False
     )
 
-    # Bölge etiketleri (sadece tüm görünümde)
-    if manager == "TÜMÜ":
+    # Etiket görünümü seçimine göre
+    if view_mode == "Bölge Görünümü":
+        # Bölge etiketleri
         label_lons, label_lats, label_texts = [], [], []
         
         for region in gdf["Bölge"].unique():
@@ -234,8 +235,8 @@ def create_figure(gdf, manager):
             showlegend=False
         )
     
-    # Şehir etiketleri (filtre varsa)
-    else:
+    else:  # Şehir Görünümü
+        # Şehir etiketleri
         city_lons, city_lats, city_texts = [], [], []
         
         for idx, row in gdf.iterrows():
@@ -283,6 +284,14 @@ geo = load_geo()
 merged, bolge_df = prepare_data(df, geo)
 
 st.sidebar.header("🔍 Filtre")
+
+# Görünüm modu
+view_mode = st.sidebar.radio(
+    "Görünüm Modu",
+    ["Bölge Görünümü", "Şehir Görünümü"],
+    index=0
+)
+
 managers = ["TÜMÜ"] + sorted(merged["Ticaret Müdürü"].unique())
 selected_manager = st.sidebar.selectbox("Ticaret Müdürü", managers)
 
@@ -292,12 +301,10 @@ for region, color in REGION_COLORS.items():
     if region in merged["Bölge"].values:
         st.sidebar.markdown(f"<span style='color:{color}'>⬤</span> {region}", unsafe_allow_html=True)
 
-fig = create_figure(merged, selected_manager)
+fig = create_figure(merged, selected_manager, view_mode)
 st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("📊 Bölge Bazlı Toplamlar")
 bolge_styled = bolge_df.copy()
 bolge_styled["Renk"] = bolge_styled["Bölge"].map(REGION_COLORS)
 st.dataframe(bolge_styled, use_container_width=True, hide_index=True)
-
-
