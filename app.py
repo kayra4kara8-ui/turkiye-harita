@@ -19,10 +19,10 @@ st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
 # =============================================================================
 REGION_COLORS = {
     "MARMARA": "#0EA5E9",              # Sky Blue - Deniz ve boğazlar
-    "BATI ANADOLU": "#FCD34D",         # BAL SARI - Bal rengi
+    "BATI ANADOLU": "#14B8A6",         # Turkuaz-yeşil arası
     "EGE": "#FCD34D",                  # BAL SARI (Batı Anadolu ile aynı)
     "İÇ ANADOLU": "#F59E0B",           # Amber - Kuru bozkır
-    "GÜNEY DOĞU ANADOLU": "#DC2626",    # Red - Sıcak ve kuru
+    "GÜNEY DOĞU ANADOLU": "#E07A5F",   # Terracotta 
     "KUZEY ANADOLU": "#059669",        # Emerald - Yemyeşil ormanlar
     "KARADENİZ": "#059669",            # Emerald (Kuzey Anadolu ile aynı)
     "AKDENİZ": "#8B5CF6",              # Violet - Akdeniz
@@ -167,7 +167,7 @@ def get_region_center(gdf_region):
 # =============================================================================
 # FIGURE
 # =============================================================================
-def create_figure(gdf, manager, view_mode):
+def create_figure(gdf, manager, view_mode, total_kutu):
 
     gdf = gdf.copy()
 
@@ -223,7 +223,7 @@ def create_figure(gdf, manager, view_mode):
 
     # Etiket görünümü seçimine göre
     if view_mode == "Bölge Görünümü":
-        # Bölge etiketleri
+        # Bölge etiketleri - YÜZDE İLE
         label_lons, label_lats, label_texts = [], [], []
         
         for region in gdf["Bölge"].unique():
@@ -231,10 +231,11 @@ def create_figure(gdf, manager, view_mode):
             total = region_gdf["Kutu Adet"].sum()
             
             if total > 0:  # Sadece veri olan bölgeleri göster
+                percent = (total / total_kutu * 100)
                 lon, lat = get_region_center(region_gdf)
                 label_lons.append(lon)
                 label_lats.append(lat)
-                label_texts.append(f"<b>{region}</b><br>{total:,.0f} kutu")
+                label_texts.append(f"<b>{region}</b><br>{total:,.0f} kutu<br>%{percent:.1f}")
 
         fig.add_scattergeo(
             lon=label_lons,
@@ -246,16 +247,17 @@ def create_figure(gdf, manager, view_mode):
             showlegend=False
         )
     
-    else:  # Şehir Görünümü
+    else:  # Şehir Görünümü - YÜZDE İLE
         # Şehir etiketleri
         city_lons, city_lats, city_texts = [], [], []
         
         for idx, row in gdf.iterrows():
             if row["Kutu Adet"] > 0:
+                percent = (row["Kutu Adet"] / total_kutu * 100)
                 centroid = row.geometry.centroid
                 city_lons.append(centroid.x)
                 city_lats.append(centroid.y)
-                city_texts.append(f"<b>{row['Şehir']}</b><br>{row['Kutu Adet']:,.0f}")
+                city_texts.append(f"<b>{row['Şehir']}</b><br>{row['Kutu Adet']:,.0f}<br>%{percent:.1f}")
         
         fig.add_scattergeo(
             lon=city_lons,
@@ -318,7 +320,7 @@ for region, color in REGION_COLORS.items():
     if region in merged["Bölge"].values:
         st.sidebar.markdown(f"<span style='color:{color}'>⬤</span> {region}", unsafe_allow_html=True)
 
-fig = create_figure(merged, selected_manager, view_mode)
+fig = create_figure(merged, selected_manager, view_mode, total_kutu)
 st.plotly_chart(fig, use_container_width=True)
 
 # Genel İstatistikler
