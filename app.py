@@ -637,3 +637,4 @@ with col_exp1:
 
 with col_exp2:
     st.info("💡 PDF export özelliği yakında eklenecek!")
+
