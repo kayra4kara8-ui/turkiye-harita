@@ -19,10 +19,10 @@ st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
 # =============================================================================
 REGION_COLORS = {
     "MARMARA": "#0EA5E9",              # Sky Blue - Deniz ve boğazlar
-    "BATI ANADOLU": "#14B8A6",         # BAL SARI - Bal rengi
+    "BATI ANADOLU": "#FCD34D",         # BAL SARI - Bal rengi
     "EGE": "#FCD34D",                  # BAL SARI (Batı Anadolu ile aynı)
     "İÇ ANADOLU": "#F59E0B",           # Amber - Kuru bozkır
-    "GÜNEY DOĞU ANADOLU": "#E07A5F",    # Red - Sıcak ve kuru
+    "GÜNEYDOĞU ANADOLU": "#DC2626",    # Red - Sıcak ve kuru
     "KUZEY ANADOLU": "#059669",        # Emerald - Yemyeşil ormanlar
     "KARADENİZ": "#059669",            # Emerald (Kuzey Anadolu ile aynı)
     "AKDENİZ": "#8B5CF6",              # Violet - Akdeniz
@@ -91,7 +91,8 @@ def normalize_city(name):
 def load_excel(file=None):
     if file is not None:
         return pd.read_excel(file)
-    return pd.read_excel("Data.xlsx")
+    # Eğer dosya yüklenmemişse boş DataFrame döndür
+    return pd.DataFrame(columns=["Şehir", "Bölge", "Ticaret Müdürü", "Kutu Adet"])
 
 @st.cache_resource
 def load_geo():
@@ -281,6 +282,12 @@ uploaded = st.sidebar.file_uploader("Excel Dosyası", ["xlsx", "xls"])
 df = load_excel(uploaded)
 geo = load_geo()
 
+# Excel dosyası yüklenmediyse uyarı göster
+if uploaded is None:
+    st.warning("⚠️ Lütfen sol taraftan bir Excel dosyası yükleyin!")
+    st.info("📋 Excel dosyası şu kolonları içermelidir: **Şehir**, **Bölge**, **Ticaret Müdürü**, **Kutu Adet**")
+    st.stop()
+
 merged, bolge_df = prepare_data(df, geo)
 
 st.sidebar.header("🔍 Filtre")
@@ -308,4 +315,3 @@ st.subheader("📊 Bölge Bazlı Toplamlar")
 bolge_styled = bolge_df.copy()
 bolge_styled["Renk"] = bolge_styled["Bölge"].map(REGION_COLORS)
 st.dataframe(bolge_styled, use_container_width=True, hide_index=True)
-
