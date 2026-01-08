@@ -19,10 +19,10 @@ st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
 # =============================================================================
 REGION_COLORS = {
     "MARMARA": "#0EA5E9",              # Sky Blue - Deniz ve boğazlar
-    "BATI ANADOLU": "#14B8A6",         # BAL SARI - Bal rengi
+    "BATI ANADOLU": "#FCD34D",         # BAL SARI - Bal rengi
     "EGE": "#FCD34D",                  # BAL SARI (Batı Anadolu ile aynı)
     "İÇ ANADOLU": "#F59E0B",           # Amber - Kuru bozkır
-    "GÜNEY DOĞU ANADOLU": "#E07A5F",    # Red - Sıcak ve kuru
+    "GÜNEY DOĞU ANADOLU": "#DC2626",    # Red - Sıcak ve kuru
     "KUZEY ANADOLU": "#059669",        # Emerald - Yemyeşil ormanlar
     "KARADENİZ": "#059669",            # Emerald (Kuzey Anadolu ile aynı)
     "AKDENİZ": "#8B5CF6",              # Violet - Akdeniz
@@ -117,6 +117,9 @@ def prepare_data(df, gdf):
     df["Ticaret Müdürü"] = df["Ticaret Müdürü"].str.upper()
     df["Kutu Adet"] = pd.to_numeric(df["Kutu Adet"], errors="coerce").fillna(0)
 
+    # Toplam kutu hesapla
+    total_kutu = df["Kutu Adet"].sum()
+
     merged = gdf.merge(df, on="CITY_KEY", how="left")
 
     # GARANTİ KOLONLAR
@@ -125,13 +128,20 @@ def prepare_data(df, gdf):
     merged["Bölge"] = merged["Bölge"].fillna("DİĞER")
     merged["Ticaret Müdürü"] = merged["Ticaret Müdürü"].fillna("YOK")
 
+    # Şehir bazında yüzde hesapla
+    merged["Şehir %"] = (merged["Kutu Adet"] / total_kutu * 100).round(2)
+
+    # Bölge bazlı toplam ve yüzde hesapla
     bolge_df = (
-        merged.groupby("Bölge", as_index=False)["Kutu Adet"]
-        .sum()
+        merged.groupby("Bölge", as_index=False)
+        .agg({"Kutu Adet": "sum"})
         .sort_values("Kutu Adet", ascending=False)
     )
+    
+    bolge_df["Bölge %"] = (bolge_df["Kutu Adet"] / total_kutu * 100).round(2)
+    bolge_df["Toplam Kutu"] = total_kutu
 
-    return merged, bolge_df
+    return merged, bolge_df, total_kutu
 
 # =============================================================================
 # GEOMETRY HELPERS
@@ -288,7 +298,7 @@ if uploaded is None:
     st.info("📋 Excel dosyası şu kolonları içermelidir: **Şehir**, **Bölge**, **Ticaret Müdürü**, **Kutu Adet**")
     st.stop()
 
-merged, bolge_df = prepare_data(df, geo)
+merged, bolge_df, total_kutu = prepare_data(df, geo)
 
 st.sidebar.header("🔍 Filtre")
 
@@ -311,8 +321,22 @@ for region, color in REGION_COLORS.items():
 fig = create_figure(merged, selected_manager, view_mode)
 st.plotly_chart(fig, use_container_width=True)
 
+# Genel İstatistikler
+col1, col2 = st.columns(2)
+with col1:
+    st.metric("📦 Toplam Kutu", f"{total_kutu:,.0f}")
+with col2:
+    st.metric("🏙️ Aktif Şehir Sayısı", f"{(merged['Kutu Adet'] > 0).sum()}")
+
 st.subheader("📊 Bölge Bazlı Toplamlar")
 bolge_styled = bolge_df.copy()
 bolge_styled["Renk"] = bolge_styled["Bölge"].map(REGION_COLORS)
+# Kolonları yeniden sırala
+bolge_styled = bolge_styled[["Bölge", "Kutu Adet", "Bölge %", "Toplam Kutu", "Renk"]]
 st.dataframe(bolge_styled, use_container_width=True, hide_index=True)
 
+st.subheader("🏙️ Şehir Bazlı Detaylar")
+# Şehir bazında tabloyu hazırla
+city_df = merged[merged["Kutu Adet"] > 0][["Şehir", "Bölge", "Kutu Adet", "Şehir %", "Ticaret Müdürü"]].copy()
+city_df = city_df.sort_values("Kutu Adet", ascending=False).reset_index(drop=True)
+st.dataframe(city_df, use_container_width=True, hide_index=True)
