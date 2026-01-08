@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore")
 # PAGE CONFIG
 # =============================================================================
 st.set_page_config(page_title="Türkiye Satış Haritası", layout="wide")
-st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
+st.title("🗺️ Türkiye – Bölge & İl Bazlı Performans Analizi")
 
 # =============================================================================
 # BÖLGE RENKLERİ (COĞRAFİ & MODERN)
@@ -92,7 +92,7 @@ def load_excel(file=None):
     if file is not None:
         return pd.read_excel(file)
     # Eğer dosya yüklenmemişse boş DataFrame döndür
-    return pd.DataFrame(columns=["Şehir", "Bölge", "Ticaret Müdürü", "Kutu Adet"])
+    return pd.DataFrame(columns=["Şehir", "Bölge", "Ticaret Müdürü", "Kutu Adet", "Toplam Adet"])
 
 @st.cache_resource
 def load_geo():
@@ -115,33 +115,44 @@ def prepare_data(df, gdf):
 
     df["Bölge"] = df["Bölge"].str.upper()
     df["Ticaret Müdürü"] = df["Ticaret Müdürü"].str.upper()
-    df["Kutu Adet"] = pd.to_numeric(df["Kutu Adet"], errors="coerce").fillna(0)
+    df["PF Kutu"] = pd.to_numeric(df["Kutu Adet"], errors="coerce").fillna(0)
+    
+    # Toplam Adet kolonunu kontrol et
+    if "Toplam Adet" in df.columns:
+        df["Toplam Kutu"] = pd.to_numeric(df["Toplam Adet"], errors="coerce").fillna(0)
+    else:
+        df["Toplam Kutu"] = 0
 
-    # Toplam kutu hesapla
-    total_kutu = df["Kutu Adet"].sum()
+    # Toplam hesapla
+    total_pf_kutu = df["PF Kutu"].sum()
+    total_market = df["Toplam Kutu"].sum()
 
     merged = gdf.merge(df, on="CITY_KEY", how="left")
 
     # GARANTİ KOLONLAR
     merged["Şehir"] = merged["fixed_name"]
-    merged["Kutu Adet"] = merged["Kutu Adet"].fillna(0)
+    merged["PF Kutu"] = merged["PF Kutu"].fillna(0)
+    merged["Toplam Kutu"] = merged["Toplam Kutu"].fillna(0)
     merged["Bölge"] = merged["Bölge"].fillna("DİĞER")
     merged["Ticaret Müdürü"] = merged["Ticaret Müdürü"].fillna("YOK")
 
     # Şehir bazında yüzde hesapla
-    merged["Şehir %"] = (merged["Kutu Adet"] / total_kutu * 100).round(2)
+    merged["PF Pay %"] = (merged["PF Kutu"] / total_pf_kutu * 100).round(2) if total_pf_kutu > 0 else 0
+    merged["Pazar Payı %"] = (merged["PF Kutu"] / merged["Toplam Kutu"] * 100).round(2)
+    merged["Pazar Payı %"] = merged["Pazar Payı %"].replace([float('inf'), -float('inf')], 0).fillna(0)
 
     # Bölge bazlı toplam ve yüzde hesapla
     bolge_df = (
         merged.groupby("Bölge", as_index=False)
-        .agg({"Kutu Adet": "sum"})
-        .sort_values("Kutu Adet", ascending=False)
+        .agg({"PF Kutu": "sum", "Toplam Kutu": "sum"})
+        .sort_values("PF Kutu", ascending=False)
     )
     
-    bolge_df["Bölge %"] = (bolge_df["Kutu Adet"] / total_kutu * 100).round(2)
-    bolge_df["Toplam Kutu"] = total_kutu
+    bolge_df["PF Pay %"] = (bolge_df["PF Kutu"] / total_pf_kutu * 100).round(2) if total_pf_kutu > 0 else 0
+    bolge_df["Pazar Payı %"] = (bolge_df["PF Kutu"] / bolge_df["Toplam Kutu"] * 100).round(2)
+    bolge_df["Pazar Payı %"] = bolge_df["Pazar Payı %"].replace([float('inf'), -float('inf')], 0).fillna(0)
 
-    return merged, bolge_df, total_kutu
+    return merged, bolge_df, total_pf_kutu, total_market
 
 # =============================================================================
 # GEOMETRY HELPERS
@@ -167,7 +178,7 @@ def get_region_center(gdf_region):
 # =============================================================================
 # FIGURE
 # =============================================================================
-def create_figure(gdf, manager, view_mode, total_kutu):
+def create_figure(gdf, manager, view_mode, total_pf_kutu):
 
     gdf = gdf.copy()
 
@@ -193,13 +204,13 @@ def create_figure(gdf, manager, view_mode, total_kutu):
                 zip(
                     region_gdf["Şehir"],
                     region_gdf["Bölge"],
-                    region_gdf["Kutu Adet"]
+                    region_gdf["PF Kutu"]
                 )
             ),
             hovertemplate=(
                 "<b>%{customdata[0]}</b><br>"
                 "Bölge: %{customdata[1]}<br>"
-                "Kutu Adet: %{customdata[2]:,.0f}"
+                "PF Kutu: %{customdata[2]:,.0f}"
                 "<extra></extra>"
             ),
             name=region
@@ -228,10 +239,10 @@ def create_figure(gdf, manager, view_mode, total_kutu):
         
         for region in gdf["Bölge"].unique():
             region_gdf = gdf[gdf["Bölge"] == region]
-            total = region_gdf["Kutu Adet"].sum()
+            total = region_gdf["PF Kutu"].sum()
             
             if total > 0:  # Sadece veri olan bölgeleri göster
-                percent = (total / total_kutu * 100)
+                percent = (total / total_pf_kutu * 100) if total_pf_kutu > 0 else 0
                 lon, lat = get_region_center(region_gdf)
                 label_lons.append(lon)
                 label_lats.append(lat)
@@ -252,12 +263,12 @@ def create_figure(gdf, manager, view_mode, total_kutu):
         city_lons, city_lats, city_texts = [], [], []
         
         for idx, row in gdf.iterrows():
-            if row["Kutu Adet"] > 0:
-                percent = (row["Kutu Adet"] / total_kutu * 100)
+            if row["PF Kutu"] > 0:
+                percent = (row["PF Kutu"] / total_pf_kutu * 100) if total_pf_kutu > 0 else 0
                 centroid = row.geometry.centroid
                 city_lons.append(centroid.x)
                 city_lats.append(centroid.y)
-                city_texts.append(f"<b>{row['Şehir']}</b><br>{row['Kutu Adet']:,.0f}<br>%{percent:.1f}")
+                city_texts.append(f"<b>{row['Şehir']}</b><br>{row['PF Kutu']:,.0f}<br>%{percent:.1f}")
         
         fig.add_scattergeo(
             lon=city_lons,
@@ -300,7 +311,7 @@ if uploaded is None:
     st.info("📋 Excel dosyası şu kolonları içermelidir: **Şehir**, **Bölge**, **Ticaret Müdürü**, **Kutu Adet**, **Toplam Adet**")
     st.stop()
 
-merged, bolge_df, total_kutu = prepare_data(df, geo)
+merged, bolge_df, total_pf_kutu, total_market = prepare_data(df, geo)
 
 st.sidebar.header("🔍 Filtre")
 
@@ -320,28 +331,45 @@ for region, color in REGION_COLORS.items():
     if region in merged["Bölge"].values:
         st.sidebar.markdown(f"<span style='color:{color}'>⬤</span> {region}", unsafe_allow_html=True)
 
-fig = create_figure(merged, selected_manager, view_mode, total_kutu)
+fig = create_figure(merged, selected_manager, view_mode, total_pf_kutu)
 st.plotly_chart(fig, use_container_width=True)
 
 # Genel İstatistikler
-col1, col2 = st.columns(2)
+col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.metric("📦 Toplam Kutu", f"{total_kutu:,.0f}")
+    st.metric("📦 PF Kutu", f"{total_pf_kutu:,.0f}")
 with col2:
-    st.metric("🏙️ Aktif Şehir Sayısı", f"{(merged['Kutu Adet'] > 0).sum()}")
+    st.metric("🏪 Toplam Kutu", f"{total_market:,.0f}")
+with col3:
+    pazar_payi_genel = (total_pf_kutu / total_market * 100) if total_market > 0 else 0
+    st.metric("📊 Genel Pazar Payı", f"%{pazar_payi_genel:.1f}")
+with col4:
+    st.metric("🏙️ Aktif Şehir", f"{(merged['PF Kutu'] > 0).sum()}")
 
-st.subheader("📊 Bölge Bazlı Toplamlar")
-bolge_styled = bolge_df.copy()
-bolge_styled["Renk"] = bolge_styled["Bölge"].map(REGION_COLORS)
-# Kolonları yeniden sırala
-bolge_styled = bolge_styled[["Bölge", "Kutu Adet", "Bölge %", "Toplam Kutu", "Renk"]]
-st.dataframe(bolge_styled, use_container_width=True, hide_index=True)
+st.subheader("📊 Bölge Bazlı Performans")
+bolge_display = bolge_df[bolge_df["PF Kutu"] > 0].copy()
+bolge_display = bolge_display[["Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %"]]
+st.dataframe(bolge_display, use_container_width=True, hide_index=True)
 
-st.subheader("🏙️ Şehir Bazlı Detaylar")
+st.subheader("🏙️ Şehir Bazlı Detay Analiz")
 # Şehir bazında tabloyu hazırla
-city_df = merged[merged["Kutu Adet"] > 0][["Şehir", "Bölge", "Kutu Adet", "Şehir %", "Ticaret Müdürü"]].copy()
-city_df = city_df.sort_values("Kutu Adet", ascending=False).reset_index(drop=True)
-st.dataframe(city_df, use_container_width=True, hide_index=True)
+city_df = merged[merged["PF Kutu"] > 0][["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Ticaret Müdürü"]].copy()
+city_df = city_df.sort_values("PF Kutu", ascending=False).reset_index(drop=True)
 
-
-
+st.caption("🏆 Şehirler PF Kutu performansına göre sıralanmıştır")
+st.dataframe(
+    city_df,
+    use_container_width=True,
+    hide_index=False,
+    column_config={
+        "PF Kutu": st.column_config.NumberColumn(format="%d"),
+        "Toplam Kutu": st.column_config.NumberColumn(format="%d"),
+        "PF Pay %": st.column_config.NumberColumn(format="%.2f%%"),
+        "Pazar Payı %": st.column_config.ProgressColumn(
+            "Pazar Payı %",
+            format="%.1f%%",
+            min_value=0,
+            max_value=100,
+        ),
+    }
+)
