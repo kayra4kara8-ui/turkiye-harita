@@ -398,20 +398,16 @@ with col3:
 with col4:
     st.metric("🏙️ Aktif Şehir", f"{filtered_aktif_sehir}")
 
-# Bölge ve şehir tablolarını da filtrele
-if selected_manager != "TÜMÜ":
-    display_merged = merged[merged["Ticaret Müdürü"] == selected_manager]
-    display_bolge = (
-        display_merged.groupby("Bölge", as_index=False)
-        .agg({"PF Kutu": "sum", "Toplam Kutu": "sum"})
-        .sort_values("PF Kutu", ascending=False)
-    )
-    display_bolge["PF Pay %"] = (display_bolge["PF Kutu"] / filtered_pf * 100).round(2) if filtered_pf > 0 else 0
-    display_bolge["Pazar Payı %"] = (display_bolge["PF Kutu"] / display_bolge["Toplam Kutu"] * 100).round(2)
-    display_bolge["Pazar Payı %"] = display_bolge["Pazar Payı %"].replace([float('inf'), -float('inf')], 0).fillna(0)
-else:
-    display_merged = merged
-    display_bolge = bolge_df
+# Bölge ve şehir tablolarını hazırla (filtered_data kullan)
+display_merged = filtered_data
+display_bolge = (
+    display_merged.groupby("Bölge", as_index=False)
+    .agg({"PF Kutu": "sum", "Toplam Kutu": "sum"})
+    .sort_values("PF Kutu", ascending=False)
+)
+display_bolge["PF Pay %"] = (display_bolge["PF Kutu"] / filtered_pf * 100).round(2) if filtered_pf > 0 else 0
+display_bolge["Pazar Payı %"] = (display_bolge["PF Kutu"] / display_bolge["Toplam Kutu"] * 100).round(2)
+display_bolge["Pazar Payı %"] = display_bolge["Pazar Payı %"].replace([float('inf'), -float('inf')], 0).fillna(0)
 
 # Yatırım Stratejisi Hesaplama
 def calculate_investment_strategy(df):
@@ -470,6 +466,11 @@ def calculate_investment_strategy(df):
 
 # Yatırım stratejisi ile şehir analizi
 investment_df = calculate_investment_strategy(display_merged)
+
+# Strateji filtresini uygula
+investment_df_original = investment_df.copy()  # Grafikler için orijinali sakla
+if selected_strateji != "Tümü" and len(investment_df) > 0:
+    investment_df = investment_df[investment_df["Yatırım Stratejisi"] == selected_strateji]
 
 st.subheader("📊 Bölge Bazlı Performans")
 bolge_display = display_bolge[display_bolge["PF Kutu"] > 0].copy()
@@ -558,12 +559,12 @@ import plotly.express as px
 st.markdown("---")
 st.subheader("📊 Görsel Analizler")
 
-if len(investment_df) > 0:
+if len(investment_df_original) > 0:
     col_viz1, col_viz2 = st.columns(2)
     
     with col_viz1:
         st.markdown("#### 🏆 Top 10 Şehirler (PF Kutu)")
-        top10 = investment_df.nlargest(10, "PF Kutu")[["Şehir", "PF Kutu"]]
+        top10 = investment_df_original.nlargest(10, "PF Kutu")[["Şehir", "PF Kutu"]]
         fig_bar = px.bar(
             top10, 
             x="PF Kutu", 
@@ -577,7 +578,7 @@ if len(investment_df) > 0:
     
     with col_viz2:
         st.markdown("#### 🎯 Yatırım Stratejisi Dağılımı")
-        strateji_counts = investment_df["Yatırım Stratejisi"].value_counts().reset_index()
+        strateji_counts = investment_df_original["Yatırım Stratejisi"].value_counts().reset_index()
         strateji_counts.columns = ["Strateji", "Şehir Sayısı"]
         fig_pie = px.pie(
             strateji_counts,
@@ -617,10 +618,10 @@ with col_exp1:
         export_df = investment_df[["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Yatırım Stratejisi", "PF Segment", "Toplam Segment", "Ticaret Müdürü"]].copy()
         export_df = export_df.sort_values("PF Kutu", ascending=False)
         
-        # Excel'e çevir
+        # Excel'e çevir - openpyxl engine kullan
         from io import BytesIO
         output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
             export_df.to_excel(writer, sheet_name='Yatırım Stratejisi', index=False)
             bolge_display.to_excel(writer, sheet_name='Bölge Analizi', index=False)
         
