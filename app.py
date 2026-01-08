@@ -15,17 +15,19 @@ st.set_page_config(page_title="Türkiye Satış Haritası", layout="wide")
 st.title("🗺️ Türkiye – Bölge & İl Bazlı Kutu Adetleri")
 
 # =============================================================================
-# BÖLGE RENKLERİ
+# BÖLGE RENKLERİ (COĞRAFİ & MODERN)
 # =============================================================================
 REGION_COLORS = {
-    "MARMARA": "#0EA5E9",
-    "BATI ANADOLU": "#14B8A6",
-    "AKDENİZ": "#FCD34D",
-    "İÇ ANADOLU": "#F59E0B",
-    "KUZEY ANADOLU": "#059669",
-    "DOĞU ANADOLU": "#FFA07A",
-    "GÜNEY DOĞU ANADOLU": "#E07A5F",
-    "DİĞER": "#CCCCCC"
+    "MARMARA": "#0EA5E9",              # Sky Blue - Deniz ve boğazlar
+    "BATI ANADOLU": "#FCD34D",         # BAL SARI - Bal rengi
+    "EGE": "#FCD34D",                  # BAL SARI (Batı Anadolu ile aynı)
+    "İÇ ANADOLU": "#F59E0B",           # Amber - Kuru bozkır
+    "GÜNEYDOĞU ANADOLU": "#DC2626",    # Red - Sıcak ve kuru
+    "KUZEY ANADOLU": "#059669",        # Emerald - Yemyeşil ormanlar
+    "KARADENİZ": "#059669",            # Emerald (Kuzey Anadolu ile aynı)
+    "AKDENİZ": "#8B5CF6",              # Violet - Akdeniz
+    "DOĞU ANADOLU": "#7C3AED",         # Purple - Yüksek dağlar
+    "DİĞER": "#64748B"                 # Slate Gray
 }
 
 # =============================================================================
@@ -208,28 +210,50 @@ def create_figure(gdf, manager):
         showlegend=False
     )
 
-    # Bölge etiketleri
-    label_lons, label_lats, label_texts = [], [], []
-    
-    for region in gdf["Bölge"].unique():
-        region_gdf = gdf[gdf["Bölge"] == region]
-        total = region_gdf["Kutu Adet"].sum()
+    # Bölge etiketleri (sadece tüm görünümde)
+    if manager == "TÜMÜ":
+        label_lons, label_lats, label_texts = [], [], []
         
-        if total > 0:  # Sadece veri olan bölgeleri göster
-            lon, lat = get_region_center(region_gdf)
-            label_lons.append(lon)
-            label_lats.append(lat)
-            label_texts.append(f"<b>{region}</b><br>{total:,.0f} kutu")
+        for region in gdf["Bölge"].unique():
+            region_gdf = gdf[gdf["Bölge"] == region]
+            total = region_gdf["Kutu Adet"].sum()
+            
+            if total > 0:  # Sadece veri olan bölgeleri göster
+                lon, lat = get_region_center(region_gdf)
+                label_lons.append(lon)
+                label_lats.append(lat)
+                label_texts.append(f"<b>{region}</b><br>{total:,.0f} kutu")
 
-    fig.add_scattergeo(
-        lon=label_lons,
-        lat=label_lats,
-        mode="text",
-        text=label_texts,
-        textfont=dict(size=11, color="black", family="Arial Black"),
-        hoverinfo="skip",
-        showlegend=False
-    )
+        fig.add_scattergeo(
+            lon=label_lons,
+            lat=label_lats,
+            mode="text",
+            text=label_texts,
+            textfont=dict(size=11, color="black", family="Arial Black"),
+            hoverinfo="skip",
+            showlegend=False
+        )
+    
+    # Şehir etiketleri (filtre varsa)
+    else:
+        city_lons, city_lats, city_texts = [], [], []
+        
+        for idx, row in gdf.iterrows():
+            if row["Kutu Adet"] > 0:
+                centroid = row.geometry.centroid
+                city_lons.append(centroid.x)
+                city_lats.append(centroid.y)
+                city_texts.append(f"<b>{row['Şehir']}</b><br>{row['Kutu Adet']:,.0f}")
+        
+        fig.add_scattergeo(
+            lon=city_lons,
+            lat=city_lats,
+            mode="text",
+            text=city_texts,
+            textfont=dict(size=9, color="black", family="Arial"),
+            hoverinfo="skip",
+            showlegend=False
+        )
 
     fig.update_layout(
         geo=dict(
@@ -275,26 +299,3 @@ st.subheader("📊 Bölge Bazlı Toplamlar")
 bolge_styled = bolge_df.copy()
 bolge_styled["Renk"] = bolge_styled["Bölge"].map(REGION_COLORS)
 st.dataframe(bolge_styled, use_container_width=True, hide_index=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
