@@ -384,14 +384,93 @@ else:
     display_merged = merged
     display_bolge = bolge_df
 
+# Yatırım Stratejisi Hesaplama
+def calculate_investment_strategy(df):
+    """
+    Quantile bazlı yatırım stratejisi belirleme
+    - Agresif: Yüksek PF Kutu + Düşük Pazar Payı (büyüme potansiyeli yüksek)
+    - Hızlandırılmış: Orta PF Kutu + Orta Pazar Payı (momentum var)
+    - Koruma: Yüksek PF Kutu + Yüksek Pazar Payı (mevcut pozisyonu koru)
+    - İzleme: Düşük PF Kutu + Düşük/Yüksek Pazar Payı (düşük öncelik)
+    """
+    df = df.copy()
+    df = df[df["PF Kutu"] > 0]  # Sadece aktif şehirler
+    
+    if len(df) == 0:
+        return df
+    
+    # PF Kutu ve Pazar Payı için quantile hesapla
+    df["PF_Quantile"] = pd.qcut(df["PF Kutu"], q=3, labels=["Düşük", "Orta", "Yüksek"], duplicates='drop')
+    df["Pazar_Quantile"] = pd.qcut(df["Pazar Payı %"], q=3, labels=["Düşük", "Orta", "Yüksek"], duplicates='drop')
+    
+    # Strateji belirleme kuralları
+    def assign_strategy(row):
+        pf_q = str(row["PF_Quantile"])
+        pazar_q = str(row["Pazar_Quantile"])
+        
+        # Agresif: Yüksek hacim + Düşük pazar payı = Büyüme potansiyeli
+        if pf_q == "Yüksek" and pazar_q == "Düşük":
+            return "🚀 Agresif"
+        # Hızlandırılmış: Orta hacim + İyi büyüme potansiyeli
+        elif pf_q in ["Orta", "Yüksek"] and pazar_q == "Orta":
+            return "⚡ Hızlandırılmış"
+        # Koruma: Yüksek hacim + Yüksek pazar payı = Lider pozisyon
+        elif pf_q == "Yüksek" and pazar_q == "Yüksek":
+            return "🛡️ Koruma"
+        # Agresif 2: Orta hacim + Düşük pazar payı
+        elif pf_q == "Orta" and pazar_q == "Düşük":
+            return "🚀 Agresif"
+        # İzleme: Düşük öncelikli
+        else:
+            return "👁️ İzleme"
+    
+    df["Yatırım Stratejisi"] = df.apply(assign_strategy, axis=1)
+    
+    return df
+
+# Yatırım stratejisi ile şehir analizi
+investment_df = calculate_investment_strategy(display_merged)
+
 st.subheader("📊 Bölge Bazlı Performans")
 bolge_display = display_bolge[display_bolge["PF Kutu"] > 0].copy()
 bolge_display = bolge_display[["Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %"]]
 st.dataframe(bolge_display, use_container_width=True, hide_index=True)
 
+st.subheader("🎯 Yatırım Stratejisi Analizi")
+if len(investment_df) > 0:
+    # Strateji dağılımı
+    strategy_counts = investment_df["Yatırım Stratejisi"].value_counts()
+    col_a, col_b, col_c, col_d = st.columns(4)
+    
+    with col_a:
+        agresif_count = strategy_counts.get("🚀 Agresif", 0)
+        st.metric("🚀 Agresif", f"{agresif_count} şehir")
+    with col_b:
+        hizlandirilmis_count = strategy_counts.get("⚡ Hızlandırılmış", 0)
+        st.metric("⚡ Hızlandırılmış", f"{hizlandirilmis_count} şehir")
+    with col_c:
+        koruma_count = strategy_counts.get("🛡️ Koruma", 0)
+        st.metric("🛡️ Koruma", f"{koruma_count} şehir")
+    with col_d:
+        izleme_count = strategy_counts.get("👁️ İzleme", 0)
+        st.metric("👁️ İzleme", f"{izleme_count} şehir")
+    
+    st.caption("""
+    **Strateji Açıklamaları:**
+    - 🚀 **Agresif**: Yüksek hacim + Düşük pazar payı → Büyüme potansiyeli yüksek, agresif yatırım gerekli
+    - ⚡ **Hızlandırılmış**: Orta-yüksek hacim + Orta pazar payı → Momentum var, hızlandırılmış yatırım
+    - 🛡️ **Koruma**: Yüksek hacim + Yüksek pazar payı → Lider pozisyon, mevcut payı koru
+    - 👁️ **İzleme**: Düşük öncelikli bölgeler
+    """)
+
 st.subheader("🏙️ Şehir Bazlı Detay Analiz")
 # Şehir bazında tabloyu hazırla
-city_df = display_merged[display_merged["PF Kutu"] > 0][["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Ticaret Müdürü"]].copy()
+if len(investment_df) > 0:
+    city_df = investment_df[["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Yatırım Stratejisi", "Ticaret Müdürü"]].copy()
+else:
+    city_df = display_merged[display_merged["PF Kutu"] > 0][["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Ticaret Müdürü"]].copy()
+    city_df["Yatırım Stratejisi"] = "👁️ İzleme"
+
 city_df = city_df.sort_values("PF Kutu", ascending=False).reset_index(drop=True)
 # Index'i 1'den başlat
 city_df.index = city_df.index + 1
