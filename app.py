@@ -399,27 +399,38 @@ def calculate_investment_strategy(df):
     if len(df) == 0:
         return df
     
-    # PF Kutu ve Pazar Payı için quantile hesapla
-    df["PF_Quantile"] = pd.qcut(df["PF Kutu"], q=3, labels=["Düşük", "Orta", "Yüksek"], duplicates='drop')
-    df["Pazar_Quantile"] = pd.qcut(df["Pazar Payı %"], q=3, labels=["Düşük", "Orta", "Yüksek"], duplicates='drop')
+    # PF Kutu segmentasyonu
+    try:
+        df["PF Segment"] = pd.qcut(df["PF Kutu"], q=4, labels=["Çok Düşük", "Düşük", "Orta", "Yüksek"], duplicates='drop')
+    except:
+        df["PF Segment"] = "Orta"
     
-    # Strateji belirleme kuralları
+    # Toplam Kutu segmentasyonu
+    try:
+        df["Toplam Segment"] = pd.qcut(df["Toplam Kutu"], q=4, labels=["Çok Düşük", "Düşük", "Orta", "Yüksek"], duplicates='drop')
+    except:
+        df["Toplam Segment"] = "Orta"
+    
+    # Pazar payı segmentasyonu
+    try:
+        df["Pazar_Quantile"] = pd.qcut(df["Pazar Payı %"], q=3, labels=["Düşük", "Orta", "Yüksek"], duplicates='drop')
+    except:
+        df["Pazar_Quantile"] = "Orta"
+    
+    # Strateji belirleme kuralları (PF Segment ve Pazar Payı bazlı)
     def assign_strategy(row):
-        pf_q = str(row["PF_Quantile"])
+        pf_seg = str(row["PF Segment"])
         pazar_q = str(row["Pazar_Quantile"])
         
-        # Agresif: Yüksek hacim + Düşük pazar payı = Büyüme potansiyeli
-        if pf_q == "Yüksek" and pazar_q == "Düşük":
+        # Agresif: Yüksek/Orta hacim + Düşük pazar payı = Büyüme potansiyeli
+        if pf_seg in ["Yüksek", "Orta"] and pazar_q == "Düşük":
             return "🚀 Agresif"
-        # Hızlandırılmış: Orta hacim + İyi büyüme potansiyeli
-        elif pf_q in ["Orta", "Yüksek"] and pazar_q == "Orta":
+        # Hızlandırılmış: Orta-yüksek hacim + Orta pazar payı
+        elif pf_seg in ["Orta", "Yüksek"] and pazar_q == "Orta":
             return "⚡ Hızlandırılmış"
         # Koruma: Yüksek hacim + Yüksek pazar payı = Lider pozisyon
-        elif pf_q == "Yüksek" and pazar_q == "Yüksek":
+        elif pf_seg == "Yüksek" and pazar_q == "Yüksek":
             return "🛡️ Koruma"
-        # Agresif 2: Orta hacim + Düşük pazar payı
-        elif pf_q == "Orta" and pazar_q == "Düşük":
-            return "🚀 Agresif"
         # İzleme: Düşük öncelikli
         else:
             return "👁️ İzleme"
@@ -466,16 +477,18 @@ if len(investment_df) > 0:
 st.subheader("🏙️ Şehir Bazlı Detay Analiz")
 # Şehir bazında tabloyu hazırla
 if len(investment_df) > 0:
-    city_df = investment_df[["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Yatırım Stratejisi", "Ticaret Müdürü"]].copy()
+    city_df = investment_df[["Şehir", "Bölge", "PF Kutu", "PF Segment", "Toplam Kutu", "Toplam Segment", "PF Pay %", "Pazar Payı %", "Yatırım Stratejisi", "Ticaret Müdürü"]].copy()
 else:
     city_df = display_merged[display_merged["PF Kutu"] > 0][["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Ticaret Müdürü"]].copy()
+    city_df["PF Segment"] = "Orta"
+    city_df["Toplam Segment"] = "Orta"
     city_df["Yatırım Stratejisi"] = "👁️ İzleme"
 
 city_df = city_df.sort_values("PF Kutu", ascending=False).reset_index(drop=True)
 # Index'i 1'den başlat
 city_df.index = city_df.index + 1
 
-st.caption("🏆 Şehirler PF Kutu performansına göre sıralanmıştır")
+st.caption("🏆 Şehirler PF Kutu performansına göre sıralanmıştır | Segmentler veriyi 4 dilime böler (Çok Düşük, Düşük, Orta, Yüksek)")
 st.dataframe(
     city_df,
     use_container_width=True,
