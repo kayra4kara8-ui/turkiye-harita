@@ -22,7 +22,7 @@ REGION_COLORS = {
     "BATI ANADOLU": "#14B8A6",         # BAL SARI - Bal rengi
     "EGE": "#FCD34D",                  # BAL SARI (Batı Anadolu ile aynı)
     "İÇ ANADOLU": "#F59E0B",           # Amber - Kuru bozkır
-    "GÜNEY DOĞU ANADOLU": "#DC2626",    # Red - Sıcak ve kuru
+    "GÜNEY DOĞU ANADOLU": "#E07A5F",    # Red - Sıcak ve kuru
     "KUZEY ANADOLU": "#059669",        # Emerald - Yemyeşil ormanlar
     "KARADENİZ": "#059669",            # Emerald (Kuzey Anadolu ile aynı)
     "AKDENİZ": "#8B5CF6",              # Violet - Akdeniz
@@ -299,4 +299,5 @@ st.subheader("📊 Bölge Bazlı Toplamlar")
 bolge_styled = bolge_df.copy()
 bolge_styled["Renk"] = bolge_styled["Bölge"].map(REGION_COLORS)
 st.dataframe(bolge_styled, use_container_width=True, hide_index=True)
+
 
