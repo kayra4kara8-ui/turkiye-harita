@@ -385,10 +385,6 @@ if selected_bolge != "TÜMÜ":
 filtered_pf = filtered_data["PF Kutu"].sum()
 filtered_toplam = filtered_data["Toplam Kutu"].sum()
 filtered_aktif_sehir = (filtered_data["PF Kutu"] > 0).sum()
-else:
-    filtered_pf = pf_toplam_kutu
-    filtered_toplam = toplam_kutu
-    filtered_aktif_sehir = (merged["PF Kutu"] > 0).sum()
 
 # Genel İstatistikler
 col1, col2, col3, col4 = st.columns(4)
@@ -637,4 +633,3 @@ with col_exp1:
 
 with col_exp2:
     st.info("💡 PDF export özelliği yakında eklenecek!")
-
