@@ -371,9 +371,7 @@ for region, color in REGION_COLORS.items():
     if region in merged["Bölge"].values:
         st.sidebar.markdown(f"<span style='color:{color}'>⬤</span> {region}", unsafe_allow_html=True)
 
-fig = create_figure(merged, selected_manager, view_mode, pf_toplam_kutu)
-st.plotly_chart(fig, use_container_width=True)
-
+# FİLTRELEME MANTIĞI (Haritadan ÖNCE)
 # Seçilen müdüre göre veriyi filtrele
 if selected_manager != "TÜMÜ":
     filtered_data = merged[merged["Ticaret Müdürü"] == selected_manager]
@@ -383,6 +381,10 @@ else:
 # Bölge filtresini uygula
 if selected_bolge != "TÜMÜ":
     filtered_data = filtered_data[filtered_data["Bölge"] == selected_bolge]
+
+# Haritayı filtered_data ile çiz
+fig = create_figure(filtered_data, selected_manager, view_mode, pf_toplam_kutu)
+st.plotly_chart(fig, use_container_width=True)
 
 filtered_pf = filtered_data["PF Kutu"].sum()
 filtered_toplam = filtered_data["Toplam Kutu"].sum()
