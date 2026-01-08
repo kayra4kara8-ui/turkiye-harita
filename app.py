@@ -711,31 +711,73 @@ if len(investment_df_original) > 0:
     col_viz1, col_viz2 = st.columns(2)
     
     with col_viz1:
-        st.markdown("#### 🏆 Top 10 Şehir (PF Kutu)")
-        top10 = investment_df_original.nlargest(10, "PF Kutu")[["Şehir", "PF Kutu", "Yatırım Stratejisi"]]
-        fig_bar = px.bar(
-            top10, 
-            x="PF Kutu", 
-            y="Şehir",
-            orientation='h',
-            color="Yatırım Stratejisi",
-            text="PF Kutu"
+        st.markdown("#### 🏆 Top 10 Öncelikli Şehirler")
+        if "Öncelik Skoru" in investment_df_original.columns:
+            top10 = investment_df_original.nlargest(10, "Öncelik Skoru")[["Şehir", "Öncelik Skoru", "Yatırım Stratejisi"]]
+            fig_bar = px.bar(
+                top10, 
+                x="Öncelik Skoru", 
+                y="Şehir",
+                orientation='h',
+                color="Yatırım Stratejisi",
+                text="Öncelik Skoru",
+                color_discrete_map={
+                    "🚀 Agresif": "#EF4444",
+                    "⚡ Hızlandırılmış": "#F59E0B",
+                    "🛡️ Koruma": "#10B981",
+                    "💎 Potansiyel": "#8B5CF6",
+                    "👁️ İzleme": "#6B7280"
+                }
+            )
+            fig_bar.update_traces(textposition='outside', texttemplate='%{text:.0f}')
+        else:
+            top10 = investment_df_original.nlargest(10, "PF Kutu")[["Şehir", "PF Kutu"]]
+            fig_bar = px.bar(
+                top10, 
+                x="PF Kutu", 
+                y="Şehir",
+                orientation='h',
+                color="PF Kutu",
+                color_continuous_scale=["#3B82F6", "#1E40AF"]
+            )
+            fig_bar.update_traces(textposition='outside', texttemplate='%{text:,.0f}')
+        
+        fig_bar.update_layout(
+            height=400, 
+            showlegend=True, 
+            yaxis={'categoryorder':'total ascending'},
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
         )
-        fig_bar.update_traces(textposition='outside', texttemplate='%{text:,.0f}')
-        fig_bar.update_layout(height=400, showlegend=True, yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_bar, use_container_width=True)
     
     with col_viz2:
         st.markdown("#### 🎯 Yatırım Stratejisi Dağılımı")
         strateji_counts = investment_df_original["Yatırım Stratejisi"].value_counts().reset_index()
         strateji_counts.columns = ["Strateji", "Şehir Sayısı"]
+        
+        # Modern renkler - stratejiye uygun
+        color_map = {
+            "🚀 Agresif": "#EF4444",         # Kırmızı - Agresif
+            "⚡ Hızlandırılmış": "#F59E0B",  # Turuncu - Hızlı
+            "🛡️ Koruma": "#10B981",         # Yeşil - Güvenli
+            "💎 Potansiyel": "#8B5CF6",     # Mor - Değerli
+            "👁️ İzleme": "#6B7280"          # Gri - Pasif
+        }
+        
         fig_pie = px.pie(
             strateji_counts,
             values="Şehir Sayısı",
             names="Strateji",
-            color_discrete_sequence=px.colors.qualitative.Set3
+            color="Strateji",
+            color_discrete_map=color_map
         )
-        fig_pie.update_layout(height=400)
+        fig_pie.update_layout(
+            height=400,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        fig_pie.update_traces(textposition='inside', textinfo='percent+label')
         st.plotly_chart(fig_pie, use_container_width=True)
     
     # İYİLEŞTİRİLMİŞ Scatter plot: Pazar Büyüklüğü vs Pazar Payı
@@ -745,13 +787,22 @@ if len(investment_df_original) > 0:
     scatter_df = investment_df_original.copy()
     scatter_df["Nokta Boyutu"] = scatter_df["PF Kutu"]
     
-    # Min-max normalization ile boyutları 10-100 arasına getir
+    # Min-max normalization ile boyutları 15-80 arasına getir (daha dengeli)
     min_val = scatter_df["Nokta Boyutu"].min()
     max_val = scatter_df["Nokta Boyutu"].max()
     if max_val > min_val:
-        scatter_df["Nokta Boyutu"] = 10 + (scatter_df["Nokta Boyutu"] - min_val) / (max_val - min_val) * 90
+        scatter_df["Nokta Boyutu"] = 15 + (scatter_df["Nokta Boyutu"] - min_val) / (max_val - min_val) * 65
     else:
-        scatter_df["Nokta Boyutu"] = 50
+        scatter_df["Nokta Boyutu"] = 40
+    
+    # Modern renk paleti
+    color_map = {
+        "🚀 Agresif": "#EF4444",         # Kırmızı
+        "⚡ Hızlandırılmış": "#F59E0B",  # Turuncu
+        "🛡️ Koruma": "#10B981",         # Yeşil
+        "💎 Potansiyel": "#8B5CF6",     # Mor
+        "👁️ İzleme": "#6B7280"          # Gri
+    }
     
     fig_scatter = px.scatter(
         scatter_df,
@@ -759,34 +810,38 @@ if len(investment_df_original) > 0:
         y="Pazar Payı %",
         size="Nokta Boyutu",
         color="Yatırım Stratejisi",
+        color_discrete_map=color_map,
         hover_name="Şehir",
         hover_data={
             "Toplam Kutu": ":,.0f", 
             "PF Kutu": ":,.0f", 
             "Pazar Payı %": ":.1f",
-            "Nokta Boyutu": False  # Normalize boyutu gizle
+            "Nokta Boyutu": False
         },
         labels={
             "Toplam Kutu": "Pazar Büyüklüğü (Toplam Kutu)",
             "Pazar Payı %": "Pazar Payımız (%)"
         },
         title="Her nokta bir şehir - Büyüklük = PF Kutu hacmimiz",
-        size_max=60  # Maksimum nokta boyutu
+        size_max=50
     )
     
-    # Grid çizgileri ve arka plan iyileştirme
+    # Tasarım iyileştirmeleri
     fig_scatter.update_layout(
         height=550,
-        plot_bgcolor='rgba(250,250,250,0.5)',
+        plot_bgcolor='rgba(245,245,245,0.5)',
+        paper_bgcolor='rgba(0,0,0,0)',
         xaxis=dict(
             showgrid=True,
             gridwidth=1,
-            gridcolor='rgba(200,200,200,0.3)'
+            gridcolor='rgba(200,200,200,0.3)',
+            zeroline=False
         ),
         yaxis=dict(
             showgrid=True,
             gridwidth=1,
-            gridcolor='rgba(200,200,200,0.3)'
+            gridcolor='rgba(200,200,200,0.3)',
+            zeroline=False
         ),
         legend=dict(
             orientation="v",
@@ -794,16 +849,16 @@ if len(investment_df_original) > 0:
             y=0.99,
             xanchor="left",
             x=0.01,
-            bgcolor="rgba(255,255,255,0.8)",
-            bordercolor="rgba(0,0,0,0.2)",
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="rgba(0,0,0,0.1)",
             borderwidth=1
         )
     )
     
-    # Nokta kenarları ekle (daha belirgin görünüm)
+    # Nokta kenarları ekle
     fig_scatter.update_traces(
         marker=dict(
-            line=dict(width=1, color='rgba(0,0,0,0.3)')
+            line=dict(width=1.5, color='rgba(255,255,255,0.6)')
         )
     )
     
