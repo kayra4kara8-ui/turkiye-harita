@@ -446,15 +446,16 @@ def calculate_investment_strategy(df):
     buyume_map = {"Düşük": 1, "Orta": 2, "Yüksek": 3}
     pay_map = {"Düşük": 3, "Orta": 2, "Yüksek": 1}  # Ters: düşük pay = yüksek öncelik
     
-    df["Pazar Skoru"] = df["Pazar Büyüklüğü"].map(pazar_map).fillna(2)
-    df["Büyüme Skoru"] = df["Büyüme Potansiyeli"].map(buyume_map).fillna(2)
-    df["Pay Skoru"] = df["Pazar Payı Segment"].map(pay_map).fillna(2)
+    # Kategorik değerleri sayıya çevir
+    df["Pazar Skoru"] = df["Pazar Büyüklüğü"].astype(str).map(pazar_map).fillna(2).astype(float)
+    df["Büyüme Skoru"] = df["Büyüme Potansiyeli"].astype(str).map(buyume_map).fillna(2).astype(float)
+    df["Pay Skoru"] = df["Pazar Payı Segment"].astype(str).map(pay_map).fillna(2).astype(float)
     
     df["Öncelik Skoru"] = (
-        (df["Pazar Skoru"] * 40) +  # Pazar büyüklüğü ağırlığı %40
-        (df["Büyüme Skoru"] * 35) +  # Büyüme potansiyeli ağırlığı %35
-        (df["Pay Skoru"] * 25)       # Pazar payı ağırlığı %25
-    ) / 3 * 33.33  # 100 üzerinden normalize et
+        (df["Pazar Skoru"] * 40.0) +  # Pazar büyüklüğü ağırlığı %40
+        (df["Büyüme Skoru"] * 35.0) +  # Büyüme potansiyeli ağırlığı %35
+        (df["Pay Skoru"] * 25.0)       # Pazar payı ağırlığı %25
+    ) / 3.0 * 33.33  # 100 üzerinden normalize et
     
     df["Öncelik Skoru"] = df["Öncelik Skoru"].round(0).astype(int)
     
