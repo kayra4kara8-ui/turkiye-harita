@@ -341,16 +341,6 @@ else:
 
 merged, bolge_df, pf_toplam_kutu, toplam_kutu = prepare_data(df, geo)
 
-st.sidebar.header("🔍 Gelişmiş Filtreler")
-
-# Bölge filtresi
-bolge_list = ["TÜMÜ"] + sorted([b for b in merged["Bölge"].unique() if b != "DİĞER"])
-selected_bolge = st.sidebar.selectbox("Bölge Seçin", bolge_list)
-
-# Yatırım stratejisi filtresi
-strateji_list = ["Tümü", "🚀 Agresif", "⚡ Hızlandırılmış", "🛡️ Koruma", "👁️ İzleme"]
-selected_strateji = st.sidebar.selectbox("Yatırım Stratejisi", strateji_list)
-
 st.sidebar.header("🔍 Filtre")
 
 # Görünüm modu
@@ -360,8 +350,20 @@ view_mode = st.sidebar.radio(
     index=0
 )
 
+# Ticaret Müdürü filtresi (haritayı etkiler)
 managers = ["TÜMÜ"] + sorted(merged["Ticaret Müdürü"].unique())
 selected_manager = st.sidebar.selectbox("Ticaret Müdürü", managers)
+
+st.sidebar.markdown("---")
+st.sidebar.header("🔍 Gelişmiş Filtreler")
+
+# Bölge filtresi
+bolge_list = ["TÜMÜ"] + sorted([b for b in merged["Bölge"].unique() if b != "DİĞER"])
+selected_bolge = st.sidebar.selectbox("Bölge Seçin", bolge_list)
+
+# Yatırım stratejisi filtresi
+strateji_list = ["Tümü", "🚀 Agresif", "⚡ Hızlandırılmış", "🛡️ Koruma", "👁️ İzleme"]
+selected_strateji = st.sidebar.selectbox("Yatırım Stratejisi", strateji_list)
 
 # Renk legend'ı
 st.sidebar.header("🎨 Bölge Renkleri")
@@ -592,16 +594,20 @@ if len(investment_df_original) > 0:
     # Bölge bazlı performans grafiği
     st.markdown("#### 📍 Bölge Bazlı PF Kutu Dağılımı")
     bolge_viz = display_bolge[display_bolge["PF Kutu"] > 0].copy()
+    
+    # Her bölgeye özel renk ata
+    bolge_viz["Renk"] = bolge_viz["Bölge"].map(REGION_COLORS)
+    
     fig_bolge = px.bar(
         bolge_viz,
         x="Bölge",
         y="PF Kutu",
-        color="Pazar Payı %",
-        color_continuous_scale="RdYlGn",
+        color="Bölge",
+        color_discrete_map=REGION_COLORS,
         text="PF Kutu"
     )
     fig_bolge.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
-    fig_bolge.update_layout(height=400, xaxis_tickangle=-45)
+    fig_bolge.update_layout(height=400, xaxis_tickangle=-45, showlegend=False)
     st.plotly_chart(fig_bolge, use_container_width=True)
 
 # =============================================================================
