@@ -462,22 +462,18 @@ st.subheader("📊 Bölge Bazlı Performans")
 bolge_display = display_bolge[display_bolge["PF Kutu"] > 0].copy()
 bolge_display = bolge_display[["Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %"]]
 
+# Sayıları formatlayarak string'e çevir
+bolge_display["PF Kutu Formatli"] = bolge_display["PF Kutu"].apply(lambda x: f"{x:,.0f}")
+bolge_display["Toplam Kutu Formatli"] = bolge_display["Toplam Kutu"].apply(lambda x: f"{x:,.0f}")
+
+# Gösterilecek kolonları seç
+display_cols = bolge_display[["Bölge", "PF Kutu Formatli", "Toplam Kutu Formatli", "PF Pay %", "Pazar Payı %"]].copy()
+display_cols.columns = ["Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %"]
+
 st.dataframe(
-    bolge_display, 
+    display_cols, 
     use_container_width=True, 
-    hide_index=True,
-    column_config={
-        "PF Kutu": st.column_config.NumberColumn(
-            "PF Kutu",
-            format="%,d"
-        ),
-        "Toplam Kutu": st.column_config.NumberColumn(
-            "Toplam Kutu",
-            format="%,d"
-        ),
-        "PF Pay %": st.column_config.NumberColumn(format="%.2f%%"),
-        "Pazar Payı %": st.column_config.NumberColumn(format="%.2f%%"),
-    }
+    hide_index=True
 )
 
 st.subheader("🎯 Yatırım Stratejisi Analizi")
@@ -518,29 +514,25 @@ else:
     city_df["Yatırım Stratejisi"] = "👁️ İzleme"
 
 city_df = city_df.sort_values("PF Kutu", ascending=False).reset_index(drop=True)
+
+# Sayıları formatlayarak string'e çevir
+city_df["PF Kutu Formatli"] = city_df["PF Kutu"].apply(lambda x: f"{x:,.0f}")
+city_df["Toplam Kutu Formatli"] = city_df["Toplam Kutu"].apply(lambda x: f"{x:,.0f}")
+
 # Index'i 1'den başlat
 city_df.index = city_df.index + 1
 
+# Gösterilecek kolonları yeniden düzenle
+if len(investment_df) > 0:
+    display_city = city_df[["Şehir", "Bölge", "PF Kutu Formatli", "PF Segment", "Toplam Kutu Formatli", "Toplam Segment", "PF Pay %", "Pazar Payı %", "Yatırım Stratejisi", "Ticaret Müdürü"]].copy()
+    display_city.columns = ["Şehir", "Bölge", "PF Kutu", "PF Segment", "Toplam Kutu", "Toplam Segment", "PF Pay %", "Pazar Payı %", "Yatırım Stratejisi", "Ticaret Müdürü"]
+else:
+    display_city = city_df[["Şehir", "Bölge", "PF Kutu Formatli", "Toplam Kutu Formatli", "PF Pay %", "Pazar Payı %", "Yatırım Stratejisi", "Ticaret Müdürü"]].copy()
+    display_city.columns = ["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Yatırım Stratejisi", "Ticaret Müdürü"]
+
 st.caption("🏆 Şehirler PF Kutu performansına göre sıralanmıştır | Segmentler veriyi 4 dilime böler (Çok Düşük, Düşük, Orta, Yüksek)")
 st.dataframe(
-    city_df,
+    display_city,
     use_container_width=True,
-    hide_index=False,
-    column_config={
-        "PF Kutu": st.column_config.NumberColumn(
-            "PF Kutu",
-            format="%,d"
-        ),
-        "Toplam Kutu": st.column_config.NumberColumn(
-            "Toplam Kutu",
-            format="%,d"
-        ),
-        "PF Pay %": st.column_config.NumberColumn(format="%.2f%%"),
-        "Pazar Payı %": st.column_config.ProgressColumn(
-            "Pazar Payı %",
-            format="%.1f%%",
-            min_value=0,
-            max_value=100,
-        ),
-    }
+    hide_index=False
 )
