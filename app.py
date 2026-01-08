@@ -341,6 +341,16 @@ else:
 
 merged, bolge_df, pf_toplam_kutu, toplam_kutu = prepare_data(df, geo)
 
+st.sidebar.header("🔍 Gelişmiş Filtreler")
+
+# Bölge filtresi
+bolge_list = ["TÜMÜ"] + sorted([b for b in merged["Bölge"].unique() if b != "DİĞER"])
+selected_bolge = st.sidebar.selectbox("Bölge Seçin", bolge_list)
+
+# Yatırım stratejisi filtresi
+strateji_list = ["Tümü", "🚀 Agresif", "⚡ Hızlandırılmış", "🛡️ Koruma", "👁️ İzleme"]
+selected_strateji = st.sidebar.selectbox("Yatırım Stratejisi", strateji_list)
+
 st.sidebar.header("🔍 Filtre")
 
 # Görünüm modu
@@ -365,9 +375,16 @@ st.plotly_chart(fig, use_container_width=True)
 # Seçilen müdüre göre veriyi filtrele
 if selected_manager != "TÜMÜ":
     filtered_data = merged[merged["Ticaret Müdürü"] == selected_manager]
-    filtered_pf = filtered_data["PF Kutu"].sum()
-    filtered_toplam = filtered_data["Toplam Kutu"].sum()
-    filtered_aktif_sehir = (filtered_data["PF Kutu"] > 0).sum()
+else:
+    filtered_data = merged.copy()
+
+# Bölge filtresini uygula
+if selected_bolge != "TÜMÜ":
+    filtered_data = filtered_data[filtered_data["Bölge"] == selected_bolge]
+
+filtered_pf = filtered_data["PF Kutu"].sum()
+filtered_toplam = filtered_data["Toplam Kutu"].sum()
+filtered_aktif_sehir = (filtered_data["PF Kutu"] > 0).sum()
 else:
     filtered_pf = pf_toplam_kutu
     filtered_toplam = toplam_kutu
@@ -536,3 +553,87 @@ st.dataframe(
     use_container_width=True,
     hide_index=False
 )
+
+# =============================================================================
+# GÖRSELLEŞTİRMELER
+# =============================================================================
+import plotly.express as px
+
+st.markdown("---")
+st.subheader("📊 Görsel Analizler")
+
+if len(investment_df) > 0:
+    col_viz1, col_viz2 = st.columns(2)
+    
+    with col_viz1:
+        st.markdown("#### 🏆 Top 10 Şehirler (PF Kutu)")
+        top10 = investment_df.nlargest(10, "PF Kutu")[["Şehir", "PF Kutu"]]
+        fig_bar = px.bar(
+            top10, 
+            x="PF Kutu", 
+            y="Şehir",
+            orientation='h',
+            color="PF Kutu",
+            color_continuous_scale="Blues"
+        )
+        fig_bar.update_layout(height=400, showlegend=False, yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_bar, use_container_width=True)
+    
+    with col_viz2:
+        st.markdown("#### 🎯 Yatırım Stratejisi Dağılımı")
+        strateji_counts = investment_df["Yatırım Stratejisi"].value_counts().reset_index()
+        strateji_counts.columns = ["Strateji", "Şehir Sayısı"]
+        fig_pie = px.pie(
+            strateji_counts,
+            values="Şehir Sayısı",
+            names="Strateji",
+            color_discrete_sequence=px.colors.qualitative.Set3
+        )
+        fig_pie.update_layout(height=400)
+        st.plotly_chart(fig_pie, use_container_width=True)
+    
+    # Bölge bazlı performans grafiği
+    st.markdown("#### 📍 Bölge Bazlı PF Kutu Dağılımı")
+    bolge_viz = display_bolge[display_bolge["PF Kutu"] > 0].copy()
+    fig_bolge = px.bar(
+        bolge_viz,
+        x="Bölge",
+        y="PF Kutu",
+        color="Pazar Payı %",
+        color_continuous_scale="RdYlGn",
+        text="PF Kutu"
+    )
+    fig_bolge.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+    fig_bolge.update_layout(height=400, xaxis_tickangle=-45)
+    st.plotly_chart(fig_bolge, use_container_width=True)
+
+# =============================================================================
+# EXPORT ÖZELLİKLERİ
+# =============================================================================
+st.markdown("---")
+st.subheader("📥 Raporları İndir")
+
+col_exp1, col_exp2 = st.columns(2)
+
+with col_exp1:
+    if len(investment_df) > 0:
+        # Yatırım Stratejisi Raporu Excel Export
+        export_df = investment_df[["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Yatırım Stratejisi", "PF Segment", "Toplam Segment", "Ticaret Müdürü"]].copy()
+        export_df = export_df.sort_values("PF Kutu", ascending=False)
+        
+        # Excel'e çevir
+        from io import BytesIO
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            export_df.to_excel(writer, sheet_name='Yatırım Stratejisi', index=False)
+            bolge_display.to_excel(writer, sheet_name='Bölge Analizi', index=False)
+        
+        st.download_button(
+            label="📊 Yatırım Stratejisi Raporu (Excel)",
+            data=output.getvalue(),
+            file_name="yatirim_stratejisi_raporu.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+with col_exp2:
+    st.info("💡 PDF export özelliği yakında eklenecek!")
