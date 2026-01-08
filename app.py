@@ -297,7 +297,7 @@ geo = load_geo()
 # Excel dosyası yüklenmediyse uyarı göster
 if uploaded is None:
     st.warning("⚠️ Lütfen sol taraftan bir Excel dosyası yükleyin!")
-    st.info("📋 Excel dosyası şu kolonları içermelidir: **Şehir**, **Bölge**, **Ticaret Müdürü**, **Kutu Adet**,**Toplam Adet**")
+    st.info("📋 Excel dosyası şu kolonları içermelidir: **Şehir**, **Bölge**, **Ticaret Müdürü**, **Kutu Adet**, **Toplam Adet**")
     st.stop()
 
 merged, bolge_df, total_kutu = prepare_data(df, geo)
@@ -342,4 +342,5 @@ st.subheader("🏙️ Şehir Bazlı Detaylar")
 city_df = merged[merged["Kutu Adet"] > 0][["Şehir", "Bölge", "Kutu Adet", "Şehir %", "Ticaret Müdürü"]].copy()
 city_df = city_df.sort_values("Kutu Adet", ascending=False).reset_index(drop=True)
 st.dataframe(city_df, use_container_width=True, hide_index=True)
+
 
