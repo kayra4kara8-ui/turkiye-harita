@@ -440,25 +440,6 @@ def calculate_investment_strategy(df):
     
     df["Yatırım Stratejisi"] = df.apply(assign_strategy, axis=1)
     
-    # 6. Öncelik Skoru (1-100 arası)
-    # Pazar büyüklüğü * Büyüme potansiyeli - Pazar payı (düşük pazar payı yüksek öncelik)
-    pazar_map = {"Küçük": 1, "Orta": 2, "Büyük": 3}
-    buyume_map = {"Düşük": 1, "Orta": 2, "Yüksek": 3}
-    pay_map = {"Düşük": 3, "Orta": 2, "Yüksek": 1}  # Ters: düşük pay = yüksek öncelik
-    
-    # Kategorik değerleri sayıya çevir
-    df["Pazar Skoru"] = df["Pazar Büyüklüğü"].astype(str).map(pazar_map).fillna(2).astype(float)
-    df["Büyüme Skoru"] = df["Büyüme Potansiyeli"].astype(str).map(buyume_map).fillna(2).astype(float)
-    df["Pay Skoru"] = df["Pazar Payı Segment"].astype(str).map(pay_map).fillna(2).astype(float)
-    
-    df["Öncelik Skoru"] = (
-        (df["Pazar Skoru"] * 40.0) +  # Pazar büyüklüğü ağırlığı %40
-        (df["Büyüme Skoru"] * 35.0) +  # Büyüme potansiyeli ağırlığı %35
-        (df["Pay Skoru"] * 25.0)       # Pazar payı ağırlığı %25
-    ) / 3.0 * 33.33  # 100 üzerinden normalize et
-    
-    df["Öncelik Skoru"] = df["Öncelik Skoru"].round(0).astype(int)
-    
     return df
 
 # =============================================================================
@@ -663,7 +644,7 @@ if len(investment_df) > 0:
         "Şehir", "Bölge", "PF Kutu", "Toplam Kutu", 
         "Pazar Payı %", "Yatırım Stratejisi", 
         "Pazar Büyüklüğü", "Performans", "Pazar Payı Segment",
-        "Büyüme Potansiyeli", "Öncelik Skoru", "Ticaret Müdürü"
+        "Büyüme Potansiyeli", "Ticaret Müdürü"
     ]].copy()
 else:
     city_df = filtered_data[filtered_data["PF Kutu"] > 0][[
@@ -671,13 +652,9 @@ else:
         "Pazar Payı %", "Ticaret Müdürü"
     ]].copy()
     city_df["Yatırım Stratejisi"] = "👁️ İzleme"
-    city_df["Öncelik Skoru"] = 0
 
-# Öncelik skoruna göre sırala (en yüksek öncelik üstte)
-if "Öncelik Skoru" in city_df.columns:
-    city_df = city_df.sort_values("Öncelik Skoru", ascending=False).reset_index(drop=True)
-else:
-    city_df = city_df.sort_values("PF Kutu", ascending=False).reset_index(drop=True)
+# PF Kutu'ya göre sırala
+city_df = city_df.sort_values("PF Kutu", ascending=False).reset_index(drop=True)
 
 # Sayıları formatlayarak string'e çevir
 city_df["PF Kutu Formatli"] = city_df["PF Kutu"].apply(lambda x: f"{x:,.0f}")
@@ -693,13 +670,13 @@ city_df.index = city_df.index + 1
 if len(investment_df) > 0:
     display_city = city_df[[
         "Şehir", "Bölge", "PF Kutu Formatli", "Toplam Kutu Formatli",
-        "PF Pay % (Filtrede)", "Pazar Payı %", "Öncelik Skoru",
+        "PF Pay % (Filtrede)", "Pazar Payı %",
         "Yatırım Stratejisi", "Pazar Büyüklüğü", "Büyüme Potansiyeli",
         "Ticaret Müdürü"
     ]].copy()
     display_city.columns = [
         "Şehir", "Bölge", "PF Kutu", "Toplam Pazar",
-        "PF Pay % (Filtre)", "Pazar Payı %", "Öncelik",
+        "PF Pay % (Filtre)", "Pazar Payı %",
         "Strateji", "Pazar", "Büyüme",
         "Ticaret Müdürü"
     ]
@@ -715,7 +692,7 @@ else:
         "Ticaret Müdürü"
     ]
 
-st.caption("🎯 Şehirler **Öncelik Skoruna** göre sıralanmıştır | Yüksek skor = Yüksek yatırım önceliği")
+st.caption("📊 Şehirler **PF Kutu hacmine** göre sıralanmıştır")
 st.dataframe(
     display_city,
     use_container_width=True,
@@ -723,7 +700,7 @@ st.dataframe(
 )
 
 # =============================================================================
-# GÖRSELLEŞTİRMELER
+# GÖRSELLEŞTİRMELER - İYİLEŞTİRİLMİŞ
 # =============================================================================
 import plotly.express as px
 
@@ -734,28 +711,17 @@ if len(investment_df_original) > 0:
     col_viz1, col_viz2 = st.columns(2)
     
     with col_viz1:
-        st.markdown("#### 🏆 Top 10 Öncelikli Şehirler")
-        if "Öncelik Skoru" in investment_df_original.columns:
-            top10 = investment_df_original.nlargest(10, "Öncelik Skoru")[["Şehir", "Öncelik Skoru", "Yatırım Stratejisi"]]
-            fig_bar = px.bar(
-                top10, 
-                x="Öncelik Skoru", 
-                y="Şehir",
-                orientation='h',
-                color="Yatırım Stratejisi",
-                text="Öncelik Skoru"
-            )
-        else:
-            top10 = investment_df_original.nlargest(10, "PF Kutu")[["Şehir", "PF Kutu"]]
-            fig_bar = px.bar(
-                top10, 
-                x="PF Kutu", 
-                y="Şehir",
-                orientation='h',
-                color="PF Kutu",
-                color_continuous_scale="Blues"
-            )
-        fig_bar.update_traces(textposition='outside')
+        st.markdown("#### 🏆 Top 10 Şehir (PF Kutu)")
+        top10 = investment_df_original.nlargest(10, "PF Kutu")[["Şehir", "PF Kutu", "Yatırım Stratejisi"]]
+        fig_bar = px.bar(
+            top10, 
+            x="PF Kutu", 
+            y="Şehir",
+            orientation='h',
+            color="Yatırım Stratejisi",
+            text="PF Kutu"
+        )
+        fig_bar.update_traces(textposition='outside', texttemplate='%{text:,.0f}')
         fig_bar.update_layout(height=400, showlegend=True, yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_bar, use_container_width=True)
     
@@ -772,32 +738,99 @@ if len(investment_df_original) > 0:
         fig_pie.update_layout(height=400)
         st.plotly_chart(fig_pie, use_container_width=True)
     
-    # Scatter plot: Pazar Büyüklüğü vs Pazar Payı (Strateji bazlı renklendirme)
+    # İYİLEŞTİRİLMİŞ Scatter plot: Pazar Büyüklüğü vs Pazar Payı
     st.markdown("#### 💡 Pazar Haritası: Büyüklük vs Pazar Payı")
+    
+    # Nokta boyutlarını normalize et (çok küçük noktaları önlemek için)
+    scatter_df = investment_df_original.copy()
+    scatter_df["Nokta Boyutu"] = scatter_df["PF Kutu"]
+    
+    # Min-max normalization ile boyutları 10-100 arasına getir
+    min_val = scatter_df["Nokta Boyutu"].min()
+    max_val = scatter_df["Nokta Boyutu"].max()
+    if max_val > min_val:
+        scatter_df["Nokta Boyutu"] = 10 + (scatter_df["Nokta Boyutu"] - min_val) / (max_val - min_val) * 90
+    else:
+        scatter_df["Nokta Boyutu"] = 50
+    
     fig_scatter = px.scatter(
-        investment_df_original,
+        scatter_df,
         x="Toplam Kutu",
         y="Pazar Payı %",
-        size="PF Kutu",
+        size="Nokta Boyutu",
         color="Yatırım Stratejisi",
         hover_name="Şehir",
-        hover_data={"Toplam Kutu": ":,.0f", "PF Kutu": ":,.0f", "Pazar Payı %": ":.1f"},
+        hover_data={
+            "Toplam Kutu": ":,.0f", 
+            "PF Kutu": ":,.0f", 
+            "Pazar Payı %": ":.1f",
+            "Nokta Boyutu": False  # Normalize boyutu gizle
+        },
         labels={
             "Toplam Kutu": "Pazar Büyüklüğü (Toplam Kutu)",
             "Pazar Payı %": "Pazar Payımız (%)"
         },
-        title="Her nokta bir şehir - Büyüklük = PF Kutu hacmimiz"
+        title="Her nokta bir şehir - Büyüklük = PF Kutu hacmimiz",
+        size_max=60  # Maksimum nokta boyutu
     )
-    fig_scatter.update_layout(height=500)
+    
+    # Grid çizgileri ve arka plan iyileştirme
+    fig_scatter.update_layout(
+        height=550,
+        plot_bgcolor='rgba(250,250,250,0.5)',
+        xaxis=dict(
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='rgba(200,200,200,0.3)'
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridwidth=1,
+            gridcolor='rgba(200,200,200,0.3)'
+        ),
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01,
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="rgba(0,0,0,0.2)",
+            borderwidth=1
+        )
+    )
+    
+    # Nokta kenarları ekle (daha belirgin görünüm)
+    fig_scatter.update_traces(
+        marker=dict(
+            line=dict(width=1, color='rgba(0,0,0,0.3)')
+        )
+    )
+    
     st.plotly_chart(fig_scatter, use_container_width=True)
     
-    st.caption("""
-    📍 **Harita Okuma Rehberi:**
-    - **Sağ Üst (Büyük pazar + Yüksek payımız)**: 🛡️ Koruma bölgesi - Lider pozisyonlar
-    - **Sağ Alt (Büyük pazar + Düşük payımız)**: 🚀 Agresif bölgesi - En yüksek fırsat!
-    - **Sol Üst (Küçük pazar + Yüksek payımız)**: Niş liderlikler
-    - **Sol Alt (Küçük pazar + Düşük payımız)**: 👁️ İzleme bölgesi
-    """)
+    # Rehber kartları yan yana daha kompakt
+    col_guide1, col_guide2 = st.columns(2)
+    with col_guide1:
+        st.info("""
+        **🎯 Sağ Üst Bölge**  
+        🛡️ Koruma stratejisi  
+        Büyük pazar + Yüksek payımız = Lider pozisyon
+        
+        **🚀 Sağ Alt Bölge**  
+        🚀 Agresif strateji  
+        Büyük pazar + Düşük payımız = En yüksek fırsat!
+        """)
+    with col_guide2:
+        st.info("""
+        **💎 Sol Üst Bölge**  
+        Niş liderlikler  
+        Küçük pazar + Yüksek payımız
+        
+        **👁️ Sol Alt Bölge**  
+        👁️ İzleme stratejisi  
+        Küçük pazar + Düşük payımız = Düşük öncelik
+        """)
 
 # =============================================================================
 # EXPORT ÖZELLİKLERİ
@@ -813,9 +846,9 @@ with col_exp1:
         export_df = investment_df_original[[
             "Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "Pazar Payı %",
             "Yatırım Stratejisi", "Pazar Büyüklüğü", "Performans",
-            "Büyüme Potansiyeli", "Öncelik Skoru", "Ticaret Müdürü"
+            "Büyüme Potansiyeli", "Ticaret Müdürü"
         ]].copy()
-        export_df = export_df.sort_values("Öncelik Skoru", ascending=False)
+        export_df = export_df.sort_values("PF Kutu", ascending=False)
         
         # Excel'e çevir
         from io import BytesIO
