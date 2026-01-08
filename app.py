@@ -346,26 +346,52 @@ for region, color in REGION_COLORS.items():
 fig = create_figure(merged, selected_manager, view_mode, pf_toplam_kutu)
 st.plotly_chart(fig, use_container_width=True)
 
+# Seçilen müdüre göre veriyi filtrele
+if selected_manager != "TÜMÜ":
+    filtered_data = merged[merged["Ticaret Müdürü"] == selected_manager]
+    filtered_pf = filtered_data["PF Kutu"].sum()
+    filtered_toplam = filtered_data["Toplam Kutu"].sum()
+    filtered_aktif_sehir = (filtered_data["PF Kutu"] > 0).sum()
+else:
+    filtered_pf = pf_toplam_kutu
+    filtered_toplam = toplam_kutu
+    filtered_aktif_sehir = (merged["PF Kutu"] > 0).sum()
+
 # Genel İstatistikler
 col1, col2, col3, col4 = st.columns(4)
 with col1:
-    st.metric("📦 PF Toplam Kutu", f"{pf_toplam_kutu:,.0f}")
+    st.metric("📦 PF Toplam Kutu", f"{filtered_pf:,.0f}")
 with col2:
-    st.metric("🏪 Toplam Kutu", f"{toplam_kutu:,.0f}")
+    st.metric("🏪 Toplam Kutu", f"{filtered_toplam:,.0f}")
 with col3:
-    genel_pazar_payi = (pf_toplam_kutu / toplam_kutu * 100) if toplam_kutu > 0 else 0
+    genel_pazar_payi = (filtered_pf / filtered_toplam * 100) if filtered_toplam > 0 else 0
     st.metric("📊 Genel Pazar Payı", f"%{genel_pazar_payi:.1f}")
 with col4:
-    st.metric("🏙️ Aktif Şehir", f"{(merged['PF Kutu'] > 0).sum()}")
+    st.metric("🏙️ Aktif Şehir", f"{filtered_aktif_sehir}")
+
+# Bölge ve şehir tablolarını da filtrele
+if selected_manager != "TÜMÜ":
+    display_merged = merged[merged["Ticaret Müdürü"] == selected_manager]
+    display_bolge = (
+        display_merged.groupby("Bölge", as_index=False)
+        .agg({"PF Kutu": "sum", "Toplam Kutu": "sum"})
+        .sort_values("PF Kutu", ascending=False)
+    )
+    display_bolge["PF Pay %"] = (display_bolge["PF Kutu"] / filtered_pf * 100).round(2) if filtered_pf > 0 else 0
+    display_bolge["Pazar Payı %"] = (display_bolge["PF Kutu"] / display_bolge["Toplam Kutu"] * 100).round(2)
+    display_bolge["Pazar Payı %"] = display_bolge["Pazar Payı %"].replace([float('inf'), -float('inf')], 0).fillna(0)
+else:
+    display_merged = merged
+    display_bolge = bolge_df
 
 st.subheader("📊 Bölge Bazlı Performans")
-bolge_display = bolge_df[bolge_df["PF Kutu"] > 0].copy()
+bolge_display = display_bolge[display_bolge["PF Kutu"] > 0].copy()
 bolge_display = bolge_display[["Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %"]]
 st.dataframe(bolge_display, use_container_width=True, hide_index=True)
 
 st.subheader("🏙️ Şehir Bazlı Detay Analiz")
 # Şehir bazında tabloyu hazırla
-city_df = merged[merged["PF Kutu"] > 0][["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Ticaret Müdürü"]].copy()
+city_df = display_merged[display_merged["PF Kutu"] > 0][["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "PF Pay %", "Pazar Payı %", "Ticaret Müdürü"]].copy()
 city_df = city_df.sort_values("PF Kutu", ascending=False).reset_index(drop=True)
 # Index'i 1'den başlat
 city_df.index = city_df.index + 1
