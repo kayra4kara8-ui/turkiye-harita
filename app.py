@@ -1486,70 +1486,180 @@ if len(investment_df_original) > 0:
     st.caption("🎯 Her eksen bir metriği temsil eder. Şeklin büyüklüğü o bölgenin genel performansını gösterir.")
     
     st.markdown("---")
-    
-    # 6. WATERFALL CHART - Bölgelerin Katkısı
-    st.markdown("#### 📊 Bölgelerin PF Kutu Katkı Analizi")
-    
-    bolge_contribution = investment_df_original.groupby('Bölge')['PF Kutu'].sum().sort_values(ascending=False).head(10)
-    
-    fig_waterfall = go.Figure(go.Waterfall(
-        orientation="v",
-        measure=["relative"] * len(bolge_contribution) + ["total"],
-        x=list(bolge_contribution.index) + ["TOPLAM"],
-        y=list(bolge_contribution.values) + [bolge_contribution.sum()],
-        text=[f"{v:,.0f}" for v in bolge_contribution.values] + [f"{bolge_contribution.sum():,.0f}"],
-        textposition="outside",
-        connector={"line": {"color": "rgba(148,163,184,0.3)"}},
-        decreasing={"marker": {"color": "#EF4444"}},
-        increasing={"marker": {"color": "#10B981"}},
-        totals={"marker": {"color": "#3B82F6"}}
-    ))
-    
-    fig_waterfall.update_layout(
-        height=500,
-        plot_bgcolor='#0f172a',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#e2e8f0'),
-        xaxis=dict(title="Bölge"),
-        yaxis=dict(title="PF Kutu Katkısı"),
-        showlegend=False
-    )
-    
-    st.plotly_chart(fig_waterfall, use_container_width=True)
-    st.caption("📈 Her bölgenin toplam PF Kutu'ya katkısı. Sağdaki mavi bar toplam değeri gösterir.")
-    
-    st.markdown("---")
-    
-    # 7. HEATMAP - Bölge vs Strateji
-    st.markdown("#### 🔥 Bölge × Strateji Isı Haritası")
-    
-    heatmap_data = investment_df_original.pivot_table(
-        values='PF Kutu',
-        index='Bölge',
-        columns='Yatırım Stratejisi',
-        aggfunc='sum',
-        fill_value=0
-    )
-    
-    fig_heatmap = px.imshow(
-        heatmap_data,
-        labels=dict(x="Yatırım Stratejisi", y="Bölge", color="PF Kutu"),
-        color_continuous_scale='YlOrRd',
-        aspect="auto",
-        text_auto='.0f'
-    )
-    
-    fig_heatmap.update_layout(
-        height=500,
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#e2e8f0', size=10)
-    )
-    
-    st.plotly_chart(fig_heatmap, use_container_width=True)
-    st.caption("🔥 Koyu renkler yüksek PF Kutu hacmini gösterir. Her bölgenin hangi stratejide yoğunlaştığını görün.")
-    
-    st.markdown("---")
 
+import plotly.express as px
+
+st.markdown("---")
+st.subheader("📊 Görsel Analizler")
+
+if len(investment_df_original) > 0:
+    
+    # [Document'teki tüm grafikler buraya]
+    # ... Treemap, Sunburst, Box Plot, vb ...
+    
+    st.markdown("---")
+    
+    #  🌊 1. SANKEY AKIŞ DİYAGRAMI
+    st.markdown("### 🌊 Sankey Akış Diyagramı")
+    st.caption("💡 Bölge → Strateji → Top Şehirler akışı")
+    
+    sankey_df = investment_df_original.nlargest(15, 'PF Kutu').copy()
+    all_bolge = sankey_df['Bölge'].unique().tolist()
+    all_strateji = sankey_df['Yatırım Stratejisi'].unique().tolist()
+    all_sehir = sankey_df['Şehir'].tolist()
+    nodes = all_bolge + all_strateji + all_sehir
+    node_dict = {node: idx for idx, node in enumerate(nodes)}
+    
+    sources, targets, values, colors_link = [], [], [], []
+    for idx, row in sankey_df.iterrows():
+        sources.append(node_dict[row['Bölge']])
+        targets.append(node_dict[row['Yatırım Stratejisi']])
+        values.append(row['PF Kutu'])
+        colors_link.append('rgba(59, 130, 246, 0.3)')
+    
+    for idx, row in sankey_df.iterrows():
+        sources.append(node_dict[row['Yatırım Stratejisi']])
+        targets.append(node_dict[row['Şehir']])
+        values.append(row['PF Kutu'])
+        if '🚀' in row['Yatırım Stratejisi']:
+            colors_link.append('rgba(239, 68, 68, 0.4)')
+        elif '⚡' in row['Yatırım Stratejisi']:
+            colors_link.append('rgba(245, 158, 11, 0.4)')
+        elif '🛡️' in row['Yatırım Stratejisi']:
+            colors_link.append('rgba(16, 185, 129, 0.4)')
+        elif '💎' in row['Yatırım Stratejisi']:
+            colors_link.append('rgba(139, 92, 246, 0.4)')
+        else:
+            colors_link.append('rgba(107, 114, 128, 0.4)')
+    
+    node_colors = []
+    for node in nodes:
+        if node in all_bolge:
+            node_colors.append('#3B82F6')
+        elif node in all_strateji:
+            if '🚀' in node:
+                node_colors.append('#EF4444')
+            elif '⚡' in node:
+                node_colors.append('#F59E0B')
+            elif '🛡️' in node:
+                node_colors.append('#10B981')
+            elif '💎' in node:
+                node_colors.append('#8B5CF6')
+            else:
+                node_colors.append('#6B7280')
+        else:
+            node_colors.append('#64748B')
+    
+    fig_sankey = go.Figure(data=[go.Sankey(
+        node=dict(pad=15, thickness=20, line=dict(color='white', width=2),
+                  label=nodes, color=node_colors),
+        link=dict(source=sources, target=targets, value=values, color=colors_link)
+    )])
+    
+    fig_sankey.update_layout(
+        height=600,
+        font=dict(size=10, color='white'),
+        plot_bgcolor='#0f172a',
+        paper_bgcolor='rgba(0,0,0,0)'
+    )
+    st.plotly_chart(fig_sankey, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # 📊 2. FUNNEL CHART
+    st.markdown("### 📊 Pazar Penetrasyon Hunisi")
+    st.caption("🎯 Toplam Pazar → PF Kutu → Top Performers")
+    
+    col_f1, col_f2 = st.columns([2, 1])
+    
+    with col_f1:
+        total_market = filtered_toplam_pazar
+        total_pf = filtered_pf_toplam
+        top_20 = investment_df_original.nlargest(20, 'PF Kutu')['PF Kutu'].sum()
+        top_10 = investment_df_original.nlargest(10, 'PF Kutu')['PF Kutu'].sum()
+        top_5 = investment_df_original.nlargest(5, 'PF Kutu')['PF Kutu'].sum()
+        
+        funnel_data = pd.DataFrame({
+            'Aşama': ['🌍 Toplam Pazar', '📦 PF Toplam', '🏆 Top 20', '⭐ Top 10', '👑 Top 5'],
+            'Değer': [total_market, total_pf, top_20, top_10, top_5]
+        })
+        
+        fig_funnel = go.Figure(go.Funnel(
+            y=funnel_data['Aşama'],
+            x=funnel_data['Değer'],
+            textposition='inside',
+            textinfo='value+percent initial',
+            marker=dict(color=['#60A5FA', '#3B82F6', '#2563EB', '#1D4ED8', '#1E40AF'])
+        ))
+        fig_funnel.update_layout(height=500, paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
+        st.plotly_chart(fig_funnel, use_container_width=True)
+    
+    with col_f2:
+        st.markdown("#### 📈 Metriks")
+        st.metric("🎯 Genel Pay", f"%{(total_pf/total_market*100):.1f}" if total_market>0 else "N/A")
+        st.metric("🏆 Top 20", f"%{(top_20/total_pf*100):.1f}" if total_pf>0 else "N/A")
+        st.metric("⭐ Top 10", f"%{(top_10/total_pf*100):.1f}" if total_pf>0 else "N/A")
+        st.metric("👑 Top 5", f"%{(top_5/total_pf*100):.1f}" if total_pf>0 else "N/A")
+    
+    st.markdown("---")
+    
+    # 🎨 3. PARALLEL COORDINATES
+    st.markdown("### 🎨 Paralel Koordinat Analizi")
+    from sklearn.preprocessing import MinMaxScaler
+    
+    parallel_df = investment_df_original.nlargest(30, 'PF Kutu').copy()
+    scaler = MinMaxScaler()
+    metrics = ['PF Kutu', 'Toplam Kutu', 'Pazar Payı %', 'Büyüme Alanı']
+    parallel_df[metrics] = scaler.fit_transform(parallel_df[metrics])
+    
+    strateji_map = {'🚀 Agresif': 5, '⚡ Hızlandırılmış': 4, '🛡️ Koruma': 3, '💎 Potansiyel': 2, '👁️ İzleme': 1}
+    parallel_df['Strateji_Num'] = parallel_df['Yatırım Stratejisi'].map(strateji_map)
+    color_map_parallel = {'🚀 Agresif': 0, '⚡ Hızlandırılmış': 1, '🛡️ Koruma': 2, '💎 Potansiyel': 3, '👁️ İzleme': 4}
+    parallel_df['color_code'] = parallel_df['Yatırım Stratejisi'].map(color_map_parallel)
+    
+    fig_parallel = go.Figure(data=go.Parcoords(
+        line=dict(color=parallel_df['color_code'], 
+                  colorscale=[[0,'#EF4444'],[0.25,'#F59E0B'],[0.5,'#10B981'],[0.75,'#8B5CF6'],[1,'#6B7280']]),
+        dimensions=[
+            dict(range=[0,1], label='PF Kutu', values=parallel_df['PF Kutu']),
+            dict(range=[0,1], label='Toplam', values=parallel_df['Toplam Kutu']),
+            dict(range=[0,1], label='Pazar %', values=parallel_df['Pazar Payı %']),
+            dict(range=[0,1], label='Büyüme', values=parallel_df['Büyüme Alanı']),
+            dict(range=[1,5], label='Strateji', values=parallel_df['Strateji_Num'],
+                 tickvals=[1,2,3,4,5], ticktext=['İzleme','Potansiyel','Koruma','Hızlandırılmış','Agresif'])
+        ]
+    ))
+    fig_parallel.update_layout(height=500, paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
+    st.plotly_chart(fig_parallel, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # 💎 4. PRIORITY MATRIX
+    st.markdown("### 💎 Yatırım Öncelik Matrisi")
+    
+    priority_df = investment_df_original.copy()
+    priority_df['Büyüme_Norm'] = (priority_df['Büyüme Alanı'] - priority_df['Büyüme Alanı'].min()) / (priority_df['Büyüme Alanı'].max() - priority_df['Büyüme Alanı'].min())
+    priority_df['Performans_Norm'] = (priority_df['PF Kutu'] - priority_df['PF Kutu'].min()) / (priority_df['PF Kutu'].max() - priority_df['PF Kutu'].min())
+    priority_df['Öncelik Skoru'] = (priority_df['Büyüme_Norm'] * 60) + (priority_df['Performans_Norm'] * 40)
+    
+    priority_top = priority_df.nlargest(30, 'Öncelik Skoru')
+    
+    fig_priority = px.scatter(
+        priority_top, x='Büyüme_Norm', y='Performans_Norm', size='Toplam Kutu',
+        color='Yatırım Stratejisi',
+        color_discrete_map={'🚀 Agresif':'#EF4444', '⚡ Hızlandırılmış':'#F59E0B', 
+                            '🛡️ Koruma':'#10B981', '💎 Potansiyel':'#8B5CF6', '👁️ İzleme':'#6B7280'},
+        hover_name='Şehir', size_max=60
+    )
+    fig_priority.update_layout(height=650, plot_bgcolor='#0f172a', paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_priority, use_container_width=True)
+    
+    st.markdown("#### 🏆 Top 10 Öncelikli Şehir")
+    priority_top10 = priority_df.nlargest(10, 'Öncelik Skoru')[['Şehir', 'Bölge', 'PF Kutu', 'Öncelik Skoru', 'Yatırım Stratejisi']].copy()
+    priority_top10.index = range(1, 11)
+    st.dataframe(priority_top10, use_container_width=True)
+
+   
 # =============================================================================
 # EXPORT ÖZELLİKLERİ
 # =============================================================================
@@ -1791,3 +1901,4 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
