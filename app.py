@@ -1802,7 +1802,7 @@ if len(investment_df_original) > 0:
                             <p>💰 Potansiyel: <b>{potential_revenue:,.0f} kutu</b></p>
                             <p>📊 Mevcut Pay: <b>%{row['Pazar Payı %']:.1f}</b></p>
                             <hr style="border-color: rgba(255,255,255,0.3);">
-                            <small>✅ Acil ekip takviyesi gerekli</small>
+                            <small>✅ Acil aksiyon gerekli</small>
                         </div>
                         """, unsafe_allow_html=True)
         
@@ -2344,6 +2344,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
