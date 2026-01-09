@@ -1598,6 +1598,10 @@ if len(investment_df_original) > 0:
     st.markdown("---")
 
 
+
+
+
+
 # ============================================================================
 # YENİ ÖZELLİK 1: TİCARET MÜDÜRÜ PERFORMANCE SCORECARD
 # ============================================================================
@@ -1622,24 +1626,29 @@ if len(investment_df_original) > 0:
     # Renkli kartlar
     col_m1, col_m2, col_m3 = st.columns(3)
     
-    for idx, (col, row) in enumerate(zip([col_m1, col_m2, col_m3], mudur_performance.head(3).itertuples())):
-        with col:
+    top3_mudur = mudur_performance.head(3)
+    
+    for idx, col in enumerate([col_m1, col_m2, col_m3]):
+        if idx < len(top3_mudur):
+            row = top3_mudur.iloc[idx]
             rank_emoji = ["🥇", "🥈", "🥉"][idx]
-            st.markdown(f"""
-            <div style="
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                padding: 20px;
-                border-radius: 10px;
-                color: white;
-                text-align: center;
-            ">
-                <h1>{rank_emoji}</h1>
-                <h3>{row._1}</h3>
-                <h2>{row._2:,.0f}</h2>
-                <p>PF Kutu | {int(row._4)} Şehir</p>
-                <h4>%{row._6:.1f} Pazar Payı</h4>
-            </div>
-            """, unsafe_allow_html=True)
+            
+            with col:
+                st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    padding: 20px;
+                    border-radius: 10px;
+                    color: white;
+                    text-align: center;
+                ">
+                    <h1>{rank_emoji}</h1>
+                    <h3>{row['Ticaret Müdürü']}</h3>
+                    <h2>{row['PF Kutu']:,.0f}</h2>
+                    <p>PF Kutu | {int(row['Şehir'])} Şehir</p>
+                    <h4>%{row['Toplam Pazar Payı %']:.1f} Pazar Payı</h4>
+                </div>
+                """, unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -2064,8 +2073,6 @@ if len(investment_df_original) > 0:
 
 
 
-
-
 # =============================================================================
 # EXPORT ÖZELLİKLERİ
 # =============================================================================
@@ -2307,6 +2314,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
