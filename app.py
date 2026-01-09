@@ -781,166 +781,449 @@ if len(investment_df_original) > 0:
         st.plotly_chart(fig_pie, use_container_width=True)
     
     # İYİLEŞTİRİLMİŞ Scatter plot: Pazar Büyüklüğü vs Pazar Payı
-    st.markdown("#### 💡 Stratejik Pazar Matrisi (BCG Matrix)")
-    st.caption("🎯 Her nokta bir şehir • Büyüklük = PF Kutu hacmimiz • Konumu = Stratejik pozisyonu")
     
-    # Veriyi hazırla
-    scatter_df = investment_df_original.copy()
+    # =========================================================================
+    # YENİ GÖRSELLEŞTİRMELER - 6 FARKLI ANALİZ
+    # =========================================================================
     
-    # Pazar büyüklüğü ve pazar payı için eşik değerleri hesapla (median)
-    pazar_median = scatter_df["Toplam Kutu"].median()
-    pay_median = scatter_df["Pazar Payı %"].median()
+    # 1. TREEMAP - Hiyerarşik Görünüm (En Anlaşılır)
+    st.markdown("#### 🗺️ Hiyerarşik Pazar Haritası")
+    st.caption("📦 Bölge → Strateji → Şehir • Kutu boyutu = PF Kutu | Renk = Pazar Payı %")
     
-    # 4 Kadrana ayır (BCG Matrix mantığı)
-    def assign_quadrant(row):
-        if row["Toplam Kutu"] >= pazar_median and row["Pazar Payı %"] >= pay_median:
-            return "⭐ YILDIZLAR"  # Büyük pazar + Yüksek pay = En iyi
-        elif row["Toplam Kutu"] >= pazar_median and row["Pazar Payı %"] < pay_median:
-            return "❓ SORU İŞARETİ"  # Büyük pazar + Düşük pay = Fırsat
-        elif row["Toplam Kutu"] < pazar_median and row["Pazar Payı %"] >= pay_median:
-            return "💰 NAKİT İNEKLERİ"  # Küçük pazar + Yüksek pay = Stabil
-        else:
-            return "🔻 DÜŞÜK ÖNCELİK"  # Küçük pazar + Düşük pay
+    treemap_df = investment_df_original.copy()
+    treemap_df["Strateji_Kısa"] = treemap_df["Yatırım Stratejisi"].str.replace("🚀 ", "").str.replace("⚡ ", "").str.replace("🛡️ ", "").str.replace("💎 ", "").str.replace("👁️ ", "")
     
-    scatter_df["Kadran"] = scatter_df.apply(assign_quadrant, axis=1)
-    
-    # Premium renk paleti
-    color_map_quadrant = {
-        "⭐ YILDIZLAR": "#10B981",        # Parlak yeşil
-        "❓ SORU İŞARETİ": "#F59E0B",    # Canlı turuncu
-        "💰 NAKİT İNEKLERİ": "#3B82F6",  # Güven mavi
-        "🔻 DÜŞÜK ÖNCELİK": "#6B7280"    # Nötr gri
-    }
-    
-    # Nokta boyutlarını normalize et (20-55 arası)
-    min_val = scatter_df["PF Kutu"].min()
-    max_val = scatter_df["PF Kutu"].max()
-    if max_val > min_val:
-        scatter_df["Nokta Boyutu"] = 20 + (scatter_df["PF Kutu"] - min_val) / (max_val - min_val) * 35
-    else:
-        scatter_df["Nokta Boyutu"] = 35
-    
-    # Modern scatter plot
-    fig_matrix = px.scatter(
-        scatter_df,
-        x="Toplam Kutu",
-        y="Pazar Payı %",
-        size="Nokta Boyutu",
-        color="Kadran",
-        color_discrete_map=color_map_quadrant,
-        hover_name="Şehir",
+    fig_treemap = px.treemap(
+        treemap_df,
+        path=[px.Constant("TÜRKİYE"), 'Bölge', 'Strateji_Kısa', 'Şehir'],
+        values='PF Kutu',
+        color='Pazar Payı %',
+        color_continuous_scale='RdYlGn',
+        color_continuous_midpoint=treemap_df['Pazar Payı %'].median(),
         hover_data={
-            "Toplam Kutu": ":,.0f",
-            "PF Kutu": ":,.0f",
-            "Pazar Payı %": ":.1f",
-            "Nokta Boyutu": False,
-            "Kadran": True,
-            "Yatırım Stratejisi": True
-        },
-        labels={
-            "Toplam Kutu": "Pazar Büyüklüğü (Toplam Kutu)",
-            "Pazar Payı %": "Pazar Payımız (%)"
-        },
-        size_max=55
+            'PF Kutu': ':,.0f',
+            'Pazar Payı %': ':.1f',
+            'Toplam Kutu': ':,.0f'
+        }
     )
     
-    # Kadran çizgileri (median çizgileri)
-    fig_matrix.add_hline(
-        y=pay_median, 
-        line_dash="dot", 
-        line_color="rgba(148,163,184,0.6)", 
-        line_width=2
-    )
-    fig_matrix.add_vline(
-        x=pazar_median, 
-        line_dash="dot", 
-        line_color="rgba(148,163,184,0.6)", 
-        line_width=2
-    )
-    
-    # Kadran etiketleri (arka planda)
-    annotations = [
-        dict(x=pazar_median * 1.5, y=pay_median * 1.5, text="⭐ YILDIZLAR", 
-             showarrow=False, font=dict(size=16, color="rgba(16,185,129,0.3)", family="Arial Black")),
-        dict(x=pazar_median * 1.5, y=pay_median * 0.5, text="❓ SORU İŞARETİ", 
-             showarrow=False, font=dict(size=16, color="rgba(245,158,11,0.3)", family="Arial Black")),
-        dict(x=pazar_median * 0.5, y=pay_median * 1.5, text="💰 NAKİT İNEKLERİ", 
-             showarrow=False, font=dict(size=16, color="rgba(59,130,246,0.3)", family="Arial Black")),
-        dict(x=pazar_median * 0.5, y=pay_median * 0.5, text="🔻 DÜŞÜK ÖNCELİK", 
-             showarrow=False, font=dict(size=16, color="rgba(107,114,128,0.3)", family="Arial Black"))
-    ]
-    
-    # Layout - Modern dark mode
-    fig_matrix.update_layout(
+    fig_treemap.update_layout(
         height=600,
-        plot_bgcolor='#0f172a',  # Slate 900
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#e2e8f0', size=12),  # Slate 200
-        xaxis=dict(
-            showgrid=True,
-            gridwidth=0.5,
-            gridcolor='rgba(148,163,184,0.15)',  # Slate 400 transparent
-            zeroline=False,
-            title_font=dict(size=13, color='#94a3b8')
-        ),
-        yaxis=dict(
-            showgrid=True,
-            gridwidth=0.5,
-            gridcolor='rgba(148,163,184,0.15)',
-            zeroline=False,
-            title_font=dict(size=13, color='#94a3b8')
-        ),
-        legend=dict(
-            orientation="v",
-            yanchor="top",
-            y=0.98,
-            xanchor="left",
-            x=0.01,
-            bgcolor="rgba(15,23,42,0.85)",  # Slate 900 semi-transparent
-            bordercolor="rgba(148,163,184,0.3)",
-            borderwidth=1,
-            font=dict(size=11, color='#e2e8f0')
-        ),
-        annotations=annotations
+        font=dict(size=11, color='white')
     )
     
-    # Nokta stilleri - premium görünüm
-    fig_matrix.update_traces(
-        marker=dict(
-            line=dict(width=2, color='rgba(226,232,240,0.4)'),  # Beyaz kenarlık
-            opacity=0.9
+    fig_treemap.update_traces(
+        textposition="middle center",
+        marker=dict(line=dict(color='white', width=2))
+    )
+    
+    st.plotly_chart(fig_treemap, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # 2 & 3. SUNBURST + TOP 15 DUAL AXIS
+    col_sun1, col_sun2 = st.columns(2)
+    
+    with col_sun1:
+        st.markdown("#### ☀️ Radyal Dağılım (Sunburst)")
+        st.caption("🎯 Merkezden dışa: Türkiye → Bölge → Strateji")
+        
+        sunburst_df = investment_df_original.groupby(['Bölge', 'Yatırım Stratejisi'], as_index=False).agg({
+            'PF Kutu': 'sum',
+            'Pazar Payı %': 'mean'
+        })
+        
+        fig_sunburst = px.sunburst(
+            sunburst_df,
+            path=[px.Constant("TÜRKİYE"), 'Bölge', 'Yatırım Stratejisi'],
+            values='PF Kutu',
+            color='Pazar Payı %',
+            color_continuous_scale='Viridis',
+            hover_data={'PF Kutu': ':,.0f', 'Pazar Payı %': ':.1f'}
+        )
+        
+        fig_sunburst.update_layout(
+            height=500,
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(size=10, color='white')
+        )
+        
+        st.plotly_chart(fig_sunburst, use_container_width=True)
+    
+    with col_sun2:
+        st.markdown("#### 📊 Top 15 - PF Kutu vs Pazar Payı")
+        st.caption("🏆 En yüksek hacimli 15 şehir - Dual axis")
+        
+        top15 = investment_df_original.nlargest(15, 'PF Kutu').copy()
+        
+        fig_top15 = go.Figure()
+        
+        fig_top15.add_trace(go.Bar(
+            name='PF Kutu',
+            x=top15['Şehir'],
+            y=top15['PF Kutu'],
+            marker_color='#3B82F6',
+            yaxis='y',
+            text=top15['PF Kutu'].apply(lambda x: f'{x:,.0f}'),
+            textposition='outside',
+            textfont=dict(size=9)
+        ))
+        
+        fig_top15.add_trace(go.Scatter(
+            name='Pazar Payı %',
+            x=top15['Şehir'],
+            y=top15['Pazar Payı %'],
+            mode='lines+markers',
+            marker=dict(size=10, color='#F59E0B'),
+            line=dict(width=3, color='#F59E0B'),
+            yaxis='y2'
+        ))
+        
+        fig_top15.update_layout(
+            height=500,
+            plot_bgcolor='#1a1a2e',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white', size=10),
+            xaxis=dict(tickangle=-45, showgrid=False),
+            yaxis=dict(
+                title='PF Kutu',
+                titlefont=dict(color='#3B82F6'),
+                tickfont=dict(color='#3B82F6'),
+                showgrid=True,
+                gridcolor='rgba(255,255,255,0.1)'
+            ),
+            yaxis2=dict(
+                title='Pazar Payı %',
+                titlefont=dict(color='#F59E0B'),
+                tickfont=dict(color='#F59E0B'),
+                overlaying='y',
+                side='right',
+                showgrid=False
+            ),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            ),
+            margin=dict(b=120)
+        )
+        
+        st.plotly_chart(fig_top15, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # 4 & 5. BOX PLOT + VIOLIN PLOT
+    col_dist1, col_dist2 = st.columns(2)
+    
+    with col_dist1:
+        st.markdown("#### 📦 Bölgelere Göre Dağılım (Box Plot)")
+        st.caption("🎻 Her bölgedeki şehirlerin PF Kutu dağılımı")
+        
+        fig_box = px.box(
+            investment_df_original,
+            x='Bölge',
+            y='PF Kutu',
+            color='Bölge',
+            points='all',
+            hover_data={'Şehir': True, 'PF Kutu': ':,.0f'}
+        )
+        
+        fig_box.update_layout(
+            height=450,
+            plot_bgcolor='#0f172a',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white', size=10),
+            xaxis=dict(tickangle=-45, showgrid=False),
+            yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig_box, use_container_width=True)
+    
+    with col_dist2:
+        st.markdown("#### 📈 Strateji Bazlı Pazar Payı")
+        st.caption("🎯 Her stratejideki ortalama pazar payı (±Std)")
+        
+        strateji_stats = investment_df_original.groupby('Yatırım Stratejisi').agg({
+            'Pazar Payı %': ['mean', 'std', 'count'],
+            'PF Kutu': 'sum'
+        }).reset_index()
+        
+        strateji_stats.columns = ['Strateji', 'Ort_Pay', 'Std_Pay', 'Şehir_Sayısı', 'Toplam_PF']
+        
+        fig_strateji = go.Figure()
+        
+        colors_map = {
+            "🚀 Agresif": "#EF4444",
+            "⚡ Hızlandırılmış": "#F59E0B",
+            "🛡️ Koruma": "#10B981",
+            "💎 Potansiyel": "#8B5CF6",
+            "👁️ İzleme": "#6B7280"
+        }
+        
+        fig_strateji.add_trace(go.Bar(
+            x=strateji_stats['Strateji'],
+            y=strateji_stats['Ort_Pay'],
+            error_y=dict(type='data', array=strateji_stats['Std_Pay']),
+            marker_color=[colors_map.get(s, '#6B7280') for s in strateji_stats['Strateji']],
+            text=strateji_stats['Ort_Pay'].apply(lambda x: f'{x:.1f}%'),
+            textposition='outside',
+            hovertemplate='<b>%{x}</b><br>Ortalama: %{y:.1f}%<br>Şehir: %{customdata}<extra></extra>',
+            customdata=strateji_stats['Şehir_Sayısı']
+        ))
+        
+        fig_strateji.update_layout(
+            height=450,
+            plot_bgcolor='#0f172a',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white', size=10),
+            xaxis=dict(showgrid=False, tickangle=-20),
+            yaxis=dict(
+                title='Ortalama Pazar Payı %',
+                showgrid=True,
+                gridcolor='rgba(255,255,255,0.1)'
+            )
+        )
+        
+        st.plotly_chart(fig_strateji, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # 6. WATERFALL CHART - Bölge Katkı Analizi
+    st.markdown("#### 💧 Bölgelerin Kümülatif Katkı Analizi (Waterfall)")
+    st.caption("📊 Her bölgenin toplam PF Kutu'ya katkısı - soldan sağa birikiyor")
+    
+    bolge_katki = investment_df_original.groupby('Bölge')['PF Kutu'].sum().sort_values(ascending=False).reset_index()
+    
+    fig_waterfall = go.Figure(go.Waterfall(
+        name="PF Kutu",
+        orientation="v",
+        measure=["relative"] * len(bolge_katki) + ["total"],
+        x=list(bolge_katki['Bölge']) + ["🎯 TOPLAM"],
+        y=list(bolge_katki['PF Kutu']) + [0],  # Son değer otomatik hesaplanır
+        text=[f"{x:,.0f}" for x in bolge_katki['PF Kutu']] + [f"{bolge_katki['PF Kutu'].sum():,.0f}"],
+        textposition="outside",
+        connector={"line": {"color": "rgba(255,255,255,0.3)", "width": 2}},
+        increasing={"marker": {"color": "#10B981", "line": {"color": "white", "width": 1}}},
+        decreasing={"marker": {"color": "#EF4444"}},
+        totals={"marker": {"color": "#3B82F6", "line": {"color": "white", "width": 2}}}
+    ))
+    
+    fig_waterfall.update_layout(
+        height=500,
+        plot_bgcolor='#0f172a',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white', size=11),
+        xaxis=dict(tickangle=-45, showgrid=False),
+        yaxis=dict(
+            title='PF Kutu (Kümülatif)',
+            showgrid=True,
+            gridcolor='rgba(255,255,255,0.1)'
+        ),
+        showlegend=False
+    )
+    
+    st.plotly_chart(fig_waterfall, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # 7. HEATMAP - Bölge x Strateji Matrix
+    st.markdown("#### 🔥 Bölge × Strateji Isı Haritası")
+    st.caption("🎨 Hangi bölgede hangi strateji ne kadar güçlü?")
+    
+    heatmap_data = investment_df_original.pivot_table(
+        index='Bölge',
+        columns='Yatırım Stratejisi',
+        values='PF Kutu',
+        aggfunc='sum',
+        fill_value=0
+    )
+    
+    fig_heatmap = px.imshow(
+        heatmap_data,
+        labels=dict(x="Yatırım Stratejisi", y="Bölge", color="PF Kutu"),
+        color_continuous_scale='YlOrRd',
+        aspect="auto",
+        text_auto='.0f'
+    )
+    
+    fig_heatmap.update_layout(
+        height=500,
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white', size=10),
+        xaxis=dict(tickangle=-30)
+    )
+    
+    st.plotly_chart(fig_heatmap, use_container_width=True)
+
+        legend=dict(
+            bgcolor="rgba(15,23,42,0.85)",
+            bordercolor="rgba(148,163,184,0.3)",
+            borderwidth=1
         )
     )
     
-    st.plotly_chart(fig_matrix, use_container_width=True)
+    st.plotly_chart(fig_bubble, use_container_width=True)
+    st.caption("🎯 Sadece en yüksek PF Kutu hacmine sahip 20 şehir gösteriliyor")
     
-    # BCG Matrix Rehberi - Modern kartlar
     st.markdown("---")
-    col_guide1, col_guide2 = st.columns(2)
-    with col_guide1:
-        st.success("""
-        **⭐ YILDIZLAR (Sağ Üst)**  
-        Büyük pazar + Yüksek pazar payımız  
-        → Lider konumdayız, yatırım yaparak büyümeye devam  
-        → Pazar payını koruyup genişletmek kritik
-        
-        **❓ SORU İŞARETİ (Sağ Alt)**  
-        Büyük pazar + Düşük pazar payımız  
-        → EN BÜYÜK FIRSATLAR! Agresif yatırım gerekli  
-        → Yıldız olmak için agresif stratejiler uygula
-        """)
-    with col_guide2:
-        st.info("""
-        **💰 NAKİT İNEKLERİ (Sol Üst)**  
-        Küçük pazar + Yüksek pazar payımız  
-        → Stabil gelir kaynağı, minimal yatırım  
-        → Kazandığımız parayı diğer alanlara aktar
-        
-        **🔻 DÜŞÜK ÖNCELİK (Sol Alt)**  
-        Küçük pazar + Düşük pazar payımız  
-        → Çok düşük öncelik, izleme modunda  
-        → Kaynakları buraya harcama
-        """)
+    
+    # 4. PARALLEL COORDINATES - Çok boyutlu analiz
+    st.markdown("#### 🔗 Çok Boyutlu Şehir Analizi (Top 30)")
+    
+    top30_df = investment_df_original.nlargest(30, 'PF Kutu').copy()
+    
+    # Normalize değerler (0-100 arası)
+    top30_df['PF Kutu Norm'] = (top30_df['PF Kutu'] - top30_df['PF Kutu'].min()) / (top30_df['PF Kutu'].max() - top30_df['PF Kutu'].min()) * 100
+    top30_df['Toplam Kutu Norm'] = (top30_df['Toplam Kutu'] - top30_df['Toplam Kutu'].min()) / (top30_df['Toplam Kutu'].max() - top30_df['Toplam Kutu'].min()) * 100
+    
+    fig_parallel = px.parallel_coordinates(
+        top30_df,
+        dimensions=['PF Kutu Norm', 'Toplam Kutu Norm', 'Pazar Payı %'],
+        color='Pazar Payı %',
+        color_continuous_scale='RdYlGn',
+        labels={
+            'PF Kutu Norm': 'PF Kutu',
+            'Toplam Kutu Norm': 'Toplam Pazar',
+            'Pazar Payı %': 'Pazar Payı %'
+        }
+    )
+    
+    fig_parallel.update_layout(
+        height=400,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='#0f172a',
+        font=dict(color='#e2e8f0', size=11)
+    )
+    
+    st.plotly_chart(fig_parallel, use_container_width=True)
+    st.caption("📈 Her çizgi bir şehri temsil eder. Çizgilerin konumu şehrin her metrikte nasıl performans gösterdiğini gösterir.")
+    
+    st.markdown("---")
+    
+    # 5. RADAR CHART - Bölge Karşılaştırması
+    st.markdown("#### 🎯 Bölge Performans Karşılaştırması")
+    
+    # Bölge bazında metrikler
+    bolge_metrics = investment_df_original.groupby('Bölge').agg({
+        'PF Kutu': 'sum',
+        'Toplam Kutu': 'sum',
+        'Pazar Payı %': 'mean',
+        'Şehir': 'count'
+    }).reset_index()
+    
+    bolge_metrics.columns = ['Bölge', 'PF Kutu', 'Toplam Kutu', 'Ort Pazar Payı', 'Şehir Sayısı']
+    
+    # Normalize et (0-100 arası)
+    for col in ['PF Kutu', 'Toplam Kutu', 'Ort Pazar Payı', 'Şehir Sayısı']:
+        bolge_metrics[f'{col} Norm'] = (bolge_metrics[col] - bolge_metrics[col].min()) / (bolge_metrics[col].max() - bolge_metrics[col].min()) * 100
+    
+    # Top 5 bölge
+    top5_bolge = bolge_metrics.nlargest(5, 'PF Kutu')
+    
+    fig_radar = go.Figure()
+    
+    for idx, row in top5_bolge.iterrows():
+        fig_radar.add_trace(go.Scatterpolar(
+            r=[row['PF Kutu Norm'], row['Toplam Kutu Norm'], row['Ort Pazar Payı Norm'], row['Şehir Sayısı Norm']],
+            theta=['PF Kutu', 'Toplam Pazar', 'Ort Pazar Payı', 'Şehir Sayısı'],
+            fill='toself',
+            name=row['Bölge']
+        ))
+    
+    fig_radar.update_layout(
+        polar=dict(
+            bgcolor='#0f172a',
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100],
+                gridcolor='rgba(148,163,184,0.2)'
+            ),
+            angularaxis=dict(
+                gridcolor='rgba(148,163,184,0.2)'
+            )
+        ),
+        height=500,
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#e2e8f0'),
+        showlegend=True,
+        legend=dict(
+            bgcolor="rgba(15,23,42,0.85)",
+            bordercolor="rgba(148,163,184,0.3)",
+            borderwidth=1
+        )
+    )
+    
+    st.plotly_chart(fig_radar, use_container_width=True)
+    st.caption("🎯 Her eksen bir metriği temsil eder. Şeklin büyüklüğü o bölgenin genel performansını gösterir.")
+    
+    st.markdown("---")
+    
+    # 6. WATERFALL CHART - Bölgelerin Katkısı
+    st.markdown("#### 📊 Bölgelerin PF Kutu Katkı Analizi")
+    
+    bolge_contribution = investment_df_original.groupby('Bölge')['PF Kutu'].sum().sort_values(ascending=False).head(10)
+    
+    fig_waterfall = go.Figure(go.Waterfall(
+        orientation="v",
+        measure=["relative"] * len(bolge_contribution) + ["total"],
+        x=list(bolge_contribution.index) + ["TOPLAM"],
+        y=list(bolge_contribution.values) + [bolge_contribution.sum()],
+        text=[f"{v:,.0f}" for v in bolge_contribution.values] + [f"{bolge_contribution.sum():,.0f}"],
+        textposition="outside",
+        connector={"line": {"color": "rgba(148,163,184,0.3)"}},
+        decreasing={"marker": {"color": "#EF4444"}},
+        increasing={"marker": {"color": "#10B981"}},
+        totals={"marker": {"color": "#3B82F6"}}
+    ))
+    
+    fig_waterfall.update_layout(
+        height=500,
+        plot_bgcolor='#0f172a',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#e2e8f0'),
+        xaxis=dict(title="Bölge"),
+        yaxis=dict(title="PF Kutu Katkısı"),
+        showlegend=False
+    )
+    
+    st.plotly_chart(fig_waterfall, use_container_width=True)
+    st.caption("📈 Her bölgenin toplam PF Kutu'ya katkısı. Sağdaki mavi bar toplam değeri gösterir.")
+    
+    st.markdown("---")
+    
+    # 7. HEATMAP - Bölge vs Strateji
+    st.markdown("#### 🔥 Bölge × Strateji Isı Haritası")
+    
+    heatmap_data = investment_df_original.pivot_table(
+        values='PF Kutu',
+        index='Bölge',
+        columns='Yatırım Stratejisi',
+        aggfunc='sum',
+        fill_value=0
+    )
+    
+    fig_heatmap = px.imshow(
+        heatmap_data,
+        labels=dict(x="Yatırım Stratejisi", y="Bölge", color="PF Kutu"),
+        color_continuous_scale='YlOrRd',
+        aspect="auto",
+        text_auto='.0f'
+    )
+    
+    fig_heatmap.update_layout(
+        height=500,
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#e2e8f0', size=10)
+    )
+    
+    st.plotly_chart(fig_heatmap, use_container_width=True)
+    st.caption("🔥 Koyu renkler yüksek PF Kutu hacmini gösterir. Her bölgenin hangi stratejide yoğunlaştığını görün.")
+    
+    st.markdown("---")
 
 # =============================================================================
 # EXPORT ÖZELLİKLERİ
