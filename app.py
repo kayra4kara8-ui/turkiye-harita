@@ -1596,7 +1596,476 @@ if len(investment_df_original) > 0:
         st.metric("👑 Top 5", f"%{(top_5/total_pf*100):.1f}" if total_pf>0 else "N/A")
     
     st.markdown("---")
-   
+
+
+# ============================================================================
+# YENİ ÖZELLİK 1: TİCARET MÜDÜRÜ PERFORMANCE SCORECARD
+# ============================================================================
+st.markdown("---")
+st.markdown("### 👥 Ticaret Müdürü Performance Scorecard")
+
+if len(investment_df_original) > 0:
+    mudur_performance = investment_df_original.groupby('Ticaret Müdürü').agg({
+        'PF Kutu': 'sum',
+        'Toplam Kutu': 'sum',
+        'Şehir': 'count',
+        'Pazar Payı %': 'mean'
+    }).reset_index()
+    
+    mudur_performance['Ort. Pazar Payı %'] = mudur_performance['Pazar Payı %'].round(1)
+    mudur_performance['Toplam Pazar Payı %'] = (
+        mudur_performance['PF Kutu'] / mudur_performance['Toplam Kutu'] * 100
+    ).round(1)
+    mudur_performance = mudur_performance.sort_values('PF Kutu', ascending=False)
+    mudur_performance['Rank'] = range(1, len(mudur_performance) + 1)
+    
+    # Renkli kartlar
+    col_m1, col_m2, col_m3 = st.columns(3)
+    
+    for idx, (col, row) in enumerate(zip([col_m1, col_m2, col_m3], mudur_performance.head(3).itertuples())):
+        with col:
+            rank_emoji = ["🥇", "🥈", "🥉"][idx]
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 20px;
+                border-radius: 10px;
+                color: white;
+                text-align: center;
+            ">
+                <h1>{rank_emoji}</h1>
+                <h3>{row._1}</h3>
+                <h2>{row._2:,.0f}</h2>
+                <p>PF Kutu | {int(row._4)} Şehir</p>
+                <h4>%{row._6:.1f} Pazar Payı</h4>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # Detaylı tablo
+    st.markdown("#### 📊 Detaylı Müdür Karşılaştırması")
+    
+    mudur_display = mudur_performance[['Rank', 'Ticaret Müdürü', 'PF Kutu', 'Toplam Kutu', 
+                                       'Şehir', 'Toplam Pazar Payı %']].copy()
+    mudur_display['PF Kutu'] = mudur_display['PF Kutu'].apply(lambda x: f"{x:,.0f}")
+    mudur_display['Toplam Kutu'] = mudur_display['Toplam Kutu'].apply(lambda x: f"{x:,.0f}")
+    mudur_display.columns = ['Sıra', 'Müdür', 'PF Kutu', 'Toplam Pazar', 'Şehir Sayısı', 'Pazar Payı %']
+    
+    st.dataframe(mudur_display, use_container_width=True, hide_index=True)
+    
+    # Müdür karşılaştırma grafiği
+    col_mg1, col_mg2 = st.columns(2)
+    
+    with col_mg1:
+        st.markdown("##### 📈 Müdür Bazlı PF Kutu")
+        fig_mudur = px.bar(
+            mudur_performance,
+            x='Ticaret Müdürü',
+            y='PF Kutu',
+            color='Toplam Pazar Payı %',
+            color_continuous_scale='Blues',
+            text='PF Kutu'
+        )
+        fig_mudur.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
+        fig_mudur.update_layout(
+            height=400,
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(tickangle=-45)
+        )
+        st.plotly_chart(fig_mudur, use_container_width=True)
+    
+    with col_mg2:
+        st.markdown("##### 🎯 Pazar Payı Karşılaştırması")
+        fig_mudur_pay = px.scatter(
+            mudur_performance,
+            x='Şehir',
+            y='Toplam Pazar Payı %',
+            size='PF Kutu',
+            color='Ticaret Müdürü',
+            hover_name='Ticaret Müdürü',
+            hover_data={'PF Kutu': ':,.0f', 'Şehir': True}
+        )
+        fig_mudur_pay.update_layout(
+            height=400,
+            plot_bgcolor='#0f172a',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        st.plotly_chart(fig_mudur_pay, use_container_width=True)
+
+# ============================================================================
+# YENİ ÖZELLİK 2: BÜYÜK FIRSATLAR - AKSIYONA DÖNÜŞTÜR
+# ============================================================================
+st.markdown("---")
+st.markdown("### 💎 Büyük Fırsatlar - Aksiyon Gerekli!")
+st.caption("🎯 Büyük pazar + Düşük payımız = En yüksek ROI potansiyeli")
+
+if len(investment_df_original) > 0:
+    investment_df_original['Büyüme Potansiyeli Kutu'] = (
+        investment_df_original['Toplam Kutu'] - investment_df_original['PF Kutu']
+    )
+    
+    # Fırsat kriterleri:
+    # 1. Toplam Kutu > Median (büyük pazar)
+    # 2. Pazar Payı < %10 (düşük payımız)
+    # 3. Büyüme potansiyeli > 50K
+    
+    median_pazar = investment_df_original['Toplam Kutu'].median()
+    
+    firsatlar_df = investment_df_original[
+        (investment_df_original['Toplam Kutu'] > median_pazar) &
+        (investment_df_original['Pazar Payı %'] < 10) &
+        (investment_df_original['Büyüme Potansiyeli Kutu'] > 50000)
+    ].copy()
+    
+    if len(firsatlar_df) > 0:
+        firsatlar_df = firsatlar_df.sort_values('Büyüme Potansiyeli Kutu', ascending=False)
+        
+        st.warning(f"⚠️ **{len(firsatlar_df)} şehirde büyük fırsat tespit edildi!**")
+        
+        # Top 10 fırsat
+        top_firsatlar = firsatlar_df.head(10)
+        
+        col_fir1, col_fir2 = st.columns([2, 1])
+        
+        with col_fir1:
+            fig_firsat = px.scatter(
+                top_firsatlar,
+                x='Toplam Kutu',
+                y='Pazar Payı %',
+                size='Büyüme Potansiyeli Kutu',
+                color='Bölge',
+                text='Şehir',
+                hover_data={
+                    'PF Kutu': ':,.0f',
+                    'Toplam Kutu': ':,.0f',
+                    'Büyüme Potansiyeli Kutu': ':,.0f'
+                },
+                size_max=60
+            )
+            
+            fig_firsat.update_traces(
+                textposition='top center',
+                textfont=dict(size=10, color='white')
+            )
+            
+            fig_firsat.update_layout(
+                height=500,
+                plot_bgcolor='#0f172a',
+                paper_bgcolor='rgba(0,0,0,0)',
+                title="Büyük Fırsatlar Haritası",
+                xaxis_title="Pazar Büyüklüğü",
+                yaxis_title="Bizim Pazar Payımız (%)"
+            )
+            
+            st.plotly_chart(fig_firsat, use_container_width=True)
+        
+        with col_fir2:
+            st.markdown("##### 🎯 Aksiyon Önerileri")
+            
+            for idx, row in top_firsatlar.head(5).iterrows():
+                potential_revenue = row['Büyüme Potansiyeli Kutu']
+                
+                st.markdown(f"""
+                <div style="
+                    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 10px;
+                    color: white;
+                ">
+                    <h4>🎯 {row['Şehir']}</h4>
+                    <p>📍 Bölge: {row['Bölge']}</p>
+                    <p>💰 Potansiyel: <b>{potential_revenue:,.0f} kutu</b></p>
+                    <p>📊 Mevcut Pay: <b>%{row['Pazar Payı %']:.1f}</b></p>
+                    <hr style="border-color: rgba(255,255,255,0.3);">
+                    <small>✅ Acil ekip takviyesi gerekli</small>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        # Detaylı tablo
+        st.markdown("##### 📋 Tüm Fırsatlar")
+        firsat_display = firsatlar_df[['Şehir', 'Bölge', 'PF Kutu', 'Toplam Kutu', 
+                                        'Pazar Payı %', 'Büyüme Potansiyeli Kutu', 
+                                        'Ticaret Müdürü']].copy()
+        firsat_display['PF Kutu'] = firsat_display['PF Kutu'].apply(lambda x: f"{x:,.0f}")
+        firsat_display['Toplam Kutu'] = firsat_display['Toplam Kutu'].apply(lambda x: f"{x:,.0f}")
+        firsat_display['Büyüme Potansiyeli Kutu'] = firsat_display['Büyüme Potansiyeli Kutu'].apply(lambda x: f"{x:,.0f}")
+        
+        st.dataframe(firsat_display, use_container_width=True, hide_index=True)
+    else:
+        st.success("✅ Şu anda büyük fırsat kategorisinde şehir yok!")
+
+# ============================================================================
+# YENİ ÖZELLİK 3: SIFIR SATIŞ OLAN ŞEHİRLER - UYARI
+# ============================================================================
+st.markdown("---")
+st.markdown("### ⚠️ Sıfır Satış Olan Şehirler")
+
+if len(investment_df_original) > 0:
+    sifir_satis = investment_df_original[investment_df_original['PF Kutu'] == 0].copy()
+    
+    if len(sifir_satis) > 0:
+        st.error(f"🚨 **{len(sifir_satis)} şehirde hiç satış YOK!**")
+        
+        col_sif1, col_sif2 = st.columns([1, 2])
+        
+        with col_sif1:
+            st.markdown("##### 📋 Liste")
+            for _, row in sifir_satis.iterrows():
+                pazar = row['Toplam Kutu']
+                if pazar > 0:
+                    st.warning(f"🔴 **{row['Şehir']}** - Pazar: {pazar:,.0f}")
+                else:
+                    st.info(f"⚪ **{row['Şehir']}** - Pazar verisi yok")
+        
+        with col_sif2:
+            st.markdown("##### 🗺️ Coğrafi Dağılım")
+            sifir_bolge = sifir_satis.groupby('Bölge').size().reset_index()
+            sifir_bolge.columns = ['Bölge', 'Sıfır Satış Şehir Sayısı']
+            
+            fig_sifir = px.bar(
+                sifir_bolge,
+                x='Bölge',
+                y='Sıfır Satış Şehir Sayısı',
+                color='Sıfır Satış Şehir Sayısı',
+                color_continuous_scale='Reds',
+                text='Sıfır Satış Şehir Sayısı'
+            )
+            fig_sifir.update_traces(textposition='outside')
+            fig_sifir.update_layout(
+                height=350,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(tickangle=-45)
+            )
+            st.plotly_chart(fig_sifir, use_container_width=True)
+    else:
+        st.success("✅ Harika! Her şehirde satış var!")
+
+# ============================================================================
+# YENİ ÖZELLİK 4: KONSANTRASYON RİSKİ ANALİZİ
+# ============================================================================
+st.markdown("---")
+st.markdown("### 📊 Konsantrasyon Risk Analizi")
+st.caption("💡 Pareto prensibi: Satışların ne kadarı az sayıda şehirden geliyor?")
+
+if len(investment_df_original) > 0:
+    total_pf = investment_df_original['PF Kutu'].sum()
+    
+    # Kümülatif hesaplama
+    sorted_df = investment_df_original.sort_values('PF Kutu', ascending=False).copy()
+    sorted_df['Kümülatif PF'] = sorted_df['PF Kutu'].cumsum()
+    sorted_df['Kümülatif %'] = (sorted_df['Kümülatif PF'] / total_pf * 100).round(1)
+    sorted_df['Şehir Sırası'] = range(1, len(sorted_df) + 1)
+    
+    # 80/20 kuralı - %80 satış kaç şehirden?
+    sehir_80 = sorted_df[sorted_df['Kümülatif %'] <= 80]['Şehir Sırası'].max()
+    
+    col_kon1, col_kon2, col_kon3 = st.columns(3)
+    
+    with col_kon1:
+        st.metric(
+            "🎯 Top 10 Şehir",
+            f"%{sorted_df.head(10)['Kümülatif %'].iloc[-1]:.1f}",
+            delta="Toplam satıştan"
+        )
+    
+    with col_kon2:
+        st.metric(
+            "📊 %80 Satış",
+            f"{sehir_80} şehirden",
+            delta="geliyor"
+        )
+    
+    with col_kon3:
+        risk_seviye = "🟢 Düşük" if sehir_80 > 20 else "🟡 Orta" if sehir_80 > 10 else "🔴 Yüksek"
+        st.metric(
+            "⚠️ Risk Seviyesi",
+            risk_seviye
+        )
+    
+    # Pareto grafiği
+    fig_pareto = go.Figure()
+    
+    # Bar chart (PF Kutu)
+    fig_pareto.add_trace(go.Bar(
+        x=sorted_df.head(30)['Şehir'],
+        y=sorted_df.head(30)['PF Kutu'],
+        name='PF Kutu',
+        marker_color='#3B82F6',
+        yaxis='y'
+    ))
+    
+    # Line chart (Kümülatif %)
+    fig_pareto.add_trace(go.Scatter(
+        x=sorted_df.head(30)['Şehir'],
+        y=sorted_df.head(30)['Kümülatif %'],
+        name='Kümülatif %',
+        mode='lines+markers',
+        marker=dict(size=8, color='#F59E0B'),
+        line=dict(width=3, color='#F59E0B'),
+        yaxis='y2'
+    ))
+    
+    # 80% çizgisi
+    fig_pareto.add_hline(
+        y=80,
+        line_dash="dash",
+        line_color="red",
+        annotation_text="80% hedefi",
+        yref='y2'
+    )
+    
+    fig_pareto.update_layout(
+        title="Pareto Analizi: Hangi şehirler %80 satışı yapıyor?",
+        height=500,
+        plot_bgcolor='#0f172a',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white'),
+        xaxis=dict(tickangle=-45, title='Şehir'),
+        yaxis=dict(
+            title='PF Kutu',
+            titlefont=dict(color='#3B82F6'),
+            tickfont=dict(color='#3B82F6')
+        ),
+        yaxis2=dict(
+            title='Kümülatif % (Satış)',
+            titlefont=dict(color='#F59E0B'),
+            tickfont=dict(color='#F59E0B'),
+            overlaying='y',
+            side='right',
+            range=[0, 100]
+        ),
+        legend=dict(x=0.7, y=0.95)
+    )
+    
+    st.plotly_chart(fig_pareto, use_container_width=True)
+    
+    # Yorum
+    if sehir_80 <= 10:
+        st.warning(f"""
+        ⚠️ **Yüksek Konsantrasyon Riski!**
+        
+        Satışların %80'i sadece {sehir_80} şehirden geliyor. Bu şehirlerde bir sorun olursa 
+        toplam satışlar ciddi etkilenebilir. Long-tail stratejisi geliştirmeniz önerilir.
+        """)
+    else:
+        st.success(f"""
+        ✅ **Dengeli Dağılım**
+        
+        Satışlar {sehir_80} şehre yayılmış durumda. Risk dengeli.
+        """)
+
+# ============================================================================
+# YENİ ÖZELLİK 5: AKSİYON PLANI OLUŞTURUCU
+# ============================================================================
+st.markdown("---")
+st.markdown("### 📋 Otomatik Aksiyon Planı")
+st.caption("🤖 AI destekli öneriler - Veriye dayalı aksiyonlar")
+
+if len(investment_df_original) > 0:
+    
+    st.markdown("#### 🎯 Öncelikli 10 Aksiyon")
+    
+    aksiyonlar = []
+    
+    # 1. En büyük fırsatlar
+    top_firsatlar = investment_df_original[
+        (investment_df_original['Pazar Payı %'] < 5) & 
+        (investment_df_original['Toplam Kutu'] > investment_df_original['Toplam Kutu'].median())
+    ].nlargest(3, 'Toplam Kutu')
+    
+    for idx, row in top_firsatlar.iterrows():
+        aksiyonlar.append({
+            'Öncelik': '🔴 Kritik',
+            'Aksiyon': f"{row['Şehir']}'de agresif yatırım",
+            'Neden': f"Pazar büyük ({row['Toplam Kutu']:,.0f}) ama payımız %{row['Pazar Payı %']:.1f}",
+            'Sorumlu': row['Ticaret Müdürü'],
+            'Potansiyel': f"+{(row['Toplam Kutu'] - row['PF Kutu']):,.0f} kutu"
+        })
+    
+    # 2. Sıfır satış olanlar
+    sifir_satis_top = investment_df_original[
+        investment_df_original['PF Kutu'] == 0
+    ].nlargest(2, 'Toplam Kutu')
+    
+    for idx, row in sifir_satis_top.iterrows():
+        aksiyonlar.append({
+            'Öncelik': '🟠 Yüksek',
+            'Aksiyon': f"{row['Şehir']}'ye giriş yap",
+            'Neden': f"Hiç satış yok ama pazar var ({row['Toplam Kutu']:,.0f})",
+            'Sorumlu': row['Ticaret Müdürü'],
+            'Potansiyel': f"+{row['Toplam Kutu']:,.0f} kutu"
+        })
+    
+    # 3. Düşük performanslı müdürler
+    mudur_perf = investment_df_original.groupby('Ticaret Müdürü').agg({
+        'PF Kutu': 'sum',
+        'Toplam Kutu': 'sum'
+    })
+    mudur_perf['Pay %'] = mudur_perf['PF Kutu'] / mudur_perf['Toplam Kutu'] * 100
+    dusuk_mudur = mudur_perf[mudur_perf['Pay %'] < 5].sort_values('Pay %').head(2)
+    
+    for mudur, row in dusuk_mudur.iterrows():
+        aksiyonlar.append({
+            'Öncelik': '🟡 Orta',
+            'Aksiyon': f"{mudur} ile performans görüşmesi",
+            'Neden': f"Genel pazar payı %{row['Pay %']:.1f} - ortalamanın altında",
+            'Sorumlu': 'Bölge Müdürü',
+            'Potansiyel': 'Ekip motivasyonu artışı'
+        })
+    
+    # DataFrame'e çevir ve göster
+    aksiyon_df = pd.DataFrame(aksiyonlar)
+    
+    # Renkli gösterim
+    for idx, aksiyon in enumerate(aksiyonlar, 1):
+        if aksiyon['Öncelik'] == '🔴 Kritik':
+            color = "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
+        elif aksiyon['Öncelik'] == '🟠 Yüksek':
+            color = "linear-gradient(135deg, #fa709a 0%, #fee140 100%)"
+        else:
+            color = "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)"
+        
+        st.markdown(f"""
+        <div style="
+            background: {color};
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            color: white;
+        ">
+            <h4>{idx}. {aksiyon['Aksiyon']}</h4>
+            <p><b>Öncelik:</b> {aksiyon['Öncelik']}</p>
+            <p><b>Neden:</b> {aksiyon['Neden']}</p>
+            <p><b>Sorumlu:</b> {aksiyon['Sorumlu']}</p>
+            <p><b>Potansiyel Kazanç:</b> {aksiyon['Potansiyel']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Excel export
+    st.markdown("---")
+    
+    from io import BytesIO
+    output_aksiyon = BytesIO()
+    with pd.ExcelWriter(output_aksiyon, engine='openpyxl') as writer:
+        aksiyon_df.to_excel(writer, sheet_name='Aksiyon Planı', index=False)
+    
+    st.download_button(
+        label="📥 Aksiyon Planını İndir (Excel)",
+        data=output_aksiyon.getvalue(),
+        file_name="aksiyon_plani.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
+
+
+
+
+
 # =============================================================================
 # EXPORT ÖZELLİKLERİ
 # =============================================================================
@@ -1838,6 +2307,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
