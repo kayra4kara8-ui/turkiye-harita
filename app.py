@@ -1493,8 +1493,6 @@ if len(investment_df_original) > 0:
     # [Document'teki tüm grafikler buraya]
     # ... Treemap, Sunburst, Box Plot, vb ...
     
-    st.markdown("---")
-    
     #  🌊 1. SANKEY AKIŞ DİYAGRAMI
     st.markdown("### 🌊 Sankey Akış Diyagramı")
     st.caption("💡 Bölge → Strateji → Top Şehirler akışı")
@@ -1897,6 +1895,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
