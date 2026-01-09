@@ -1949,11 +1949,7 @@ if len(investment_df_original) > 0:
         height=500,
         plot_bgcolor='#0f172a',
         paper_bgcolor='rgba(0,0,0,0)',
-        showlegend=True
-    )
-    
-    # Font
-    fig_pareto.update_layout(
+        showlegend=True,
         font=dict(color='white')
     )
     
@@ -1963,27 +1959,19 @@ if len(investment_df_original) > 0:
         title='Şehir'
     )
     
-    # Y axis (sol)
+    # Y axis (sol) - basitleştirilmiş
     fig_pareto.update_yaxes(
-        title='PF Kutu',
-        titlefont=dict(color='#3B82F6'),
-        tickfont=dict(color='#3B82F6')
+        title='PF Kutu'
     )
     
-    # Y2 axis (sağ) - ayrı bir update ile
+    # Y2 axis (sağ) - ayrı layout update ile
     fig_pareto.update_layout(
         yaxis2=dict(
             title='Kümülatif %',
-            titlefont_color='#1E40AF',
-            tickfont_color='#1E40AF',
             overlaying='y',
             side='right',
             range=[0, 100]
-        )
-    )
-    
-    # Legend
-    fig_pareto.update_layout(
+        ),
         legend=dict(
             x=0.7,
             y=0.95,
@@ -2111,7 +2099,6 @@ if len(investment_df_original) > 0:
         file_name="aksiyon_plani.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
 
 
 # =============================================================================
@@ -2355,6 +2342,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
