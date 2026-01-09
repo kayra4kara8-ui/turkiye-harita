@@ -1623,14 +1623,14 @@ if len(investment_df_original) > 0:
     mudur_performance = mudur_performance.sort_values('PF Kutu', ascending=False)
     mudur_performance['Rank'] = range(1, len(mudur_performance) + 1)
     
-    # Renkli kartlar - MAVİ TONLARI
+    # Renkli kartlar - OKYANUS MAVİSİ TONLARI
     col_m1, col_m2, col_m3 = st.columns(3)
     
     top3_mudur = mudur_performance.head(3)
-    mavi_gradyanlar = [
-        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",  # 🥇
-        "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",  # 🥈
-        "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"   # 🥉
+    okyanus_renkleri = [
+        "linear-gradient(135deg, #0EA5E9 0%, #0284C7 100%)",  # 🥇 Sky Blue - Ocean
+        "linear-gradient(135deg, #06B6D4 0%, #0891B2 100%)",  # 🥈 Cyan - Deep Ocean
+        "linear-gradient(135deg, #14B8A6 0%, #0D9488 100%)"   # 🥉 Teal - Tropical
     ]
     
     for idx, col in enumerate([col_m1, col_m2, col_m3]):
@@ -1641,18 +1641,18 @@ if len(investment_df_original) > 0:
             with col:
                 st.markdown(f"""
                 <div style="
-                    background: {mavi_gradyanlar[idx]};
+                    background: {okyanus_renkleri[idx]};
                     padding: 20px;
                     border-radius: 10px;
                     color: white;
                     text-align: center;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
                 ">
-                    <h1>{rank_emoji}</h1>
-                    <h3>{row['Ticaret Müdürü']}</h3>
-                    <h2>{row['PF Kutu']:,.0f}</h2>
-                    <p>PF Kutu | {int(row['Şehir'])} Şehir</p>
-                    <h4>%{row['Toplam Pazar Payı %']:.1f} Pazar Payı</h4>
+                    <h1 style="font-size: 3rem; margin: 10px 0;">{rank_emoji}</h1>
+                    <h3 style="font-size: 1.2rem; margin: 10px 0; font-weight: bold;">{row['Ticaret Müdürü']}</h3>
+                    <h2 style="font-size: 2rem; margin: 15px 0; font-weight: bold;">{row['PF Kutu']:,.0f}</h2>
+                    <p style="font-size: 1rem; margin: 8px 0;">PF Kutu | {int(row['Şehir'])} Şehir</p>
+                    <h4 style="font-size: 1.3rem; margin: 10px 0; font-weight: bold;">%{row['Toplam Pazar Payı %']:.1f} Pazar Payı</h4>
                 </div>
                 """, unsafe_allow_html=True)
     
@@ -2060,28 +2060,32 @@ if len(investment_df_original) > 0:
     # DataFrame'e çevir ve göster
     aksiyon_df = pd.DataFrame(aksiyonlar)
     
-    # Renkli gösterim
+    # Renkli gösterim - OKUNUR RENKLER
     for idx, aksiyon in enumerate(aksiyonlar, 1):
         if aksiyon['Öncelik'] == '🔴 Kritik':
-            color = "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
+            bg_color = "#DC2626"  # Koyu kırmızı
+            text_color = "white"
         elif aksiyon['Öncelik'] == '🟠 Yüksek':
-            color = "linear-gradient(135deg, #fa709a 0%, #fee140 100%)"
+            bg_color = "#EA580C"  # Koyu turuncu
+            text_color = "white"
         else:
-            color = "linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)"
+            bg_color = "#0891B2"  # Koyu cyan
+            text_color = "white"
         
         st.markdown(f"""
         <div style="
-            background: {color};
-            padding: 15px;
+            background: {bg_color};
+            padding: 20px;
             border-radius: 10px;
-            margin-bottom: 10px;
-            color: white;
+            margin-bottom: 15px;
+            color: {text_color};
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
         ">
-            <h4>{idx}. {aksiyon['Aksiyon']}</h4>
-            <p><b>Öncelik:</b> {aksiyon['Öncelik']}</p>
-            <p><b>Neden:</b> {aksiyon['Neden']}</p>
-            <p><b>Sorumlu:</b> {aksiyon['Sorumlu']}</p>
-            <p><b>Potansiyel Kazanç:</b> {aksiyon['Potansiyel']}</p>
+            <h4 style="margin: 0 0 15px 0; font-size: 1.3rem; font-weight: bold;">{idx}. {aksiyon['Aksiyon']}</h4>
+            <p style="margin: 8px 0; font-size: 1rem;"><b>Öncelik:</b> {aksiyon['Öncelik']}</p>
+            <p style="margin: 8px 0; font-size: 1rem;"><b>Neden:</b> {aksiyon['Neden']}</p>
+            <p style="margin: 8px 0; font-size: 1rem;"><b>Sorumlu:</b> {aksiyon['Sorumlu']}</p>
+            <p style="margin: 8px 0; font-size: 1rem;"><b>Potansiyel Kazanç:</b> {aksiyon['Potansiyel']}</p>
         </div>
         """, unsafe_allow_html=True)
     
@@ -2099,8 +2103,6 @@ if len(investment_df_original) > 0:
         file_name="aksiyon_plani.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-
 # =============================================================================
 # EXPORT ÖZELLİKLERİ
 # =============================================================================
@@ -2342,6 +2344,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
