@@ -2,5 +2,6 @@ streamlit
 pandas
 geopandas
 plotly
-shapely
 openpyxl
+scikit-learn
+shapely
