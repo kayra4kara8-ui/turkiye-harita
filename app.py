@@ -1181,14 +1181,60 @@ if len(investment_df_original) > 0:
         """)
         
         st.markdown("---")
-        st.markdown("##### 📊 Dağılım")
+        st.markdown("##### 📊 Kadran Dağılımı")
         
-        for idx, row in bcg_stats.iterrows():
-            st.metric(
-                label=row['Kategori'],
-                value=f"{int(row['Şehir Sayısı'])} şehir",
-                delta=f"{row['Toplam PF']:,.0f}"
-            )
+        # 2x2 grid layout
+        col_bcg_a, col_bcg_b = st.columns(2)
+        
+        bcg_order = [
+            "⭐ Stars (Yıldızlar)",
+            "❓ Question Marks (Soru İşaretleri)",
+            "💰 Cash Cows (Nakit İnekleri)",
+            "🐕 Dogs (Düşük Öncelik)"
+        ]
+        
+        bcg_dict = bcg_stats.set_index('Kategori').to_dict('index')
+        
+        # Üst satır: Stars ve Question Marks
+        with col_bcg_a:
+            if "⭐ Stars (Yıldızlar)" in bcg_dict:
+                row = bcg_dict["⭐ Stars (Yıldızlar)"]
+                st.metric(
+                    label="⭐ Stars",
+                    value=f"{int(row['Şehir Sayısı'])} şehir",
+                    delta=f"↑ {row['Toplam PF']:,.0f}"
+                )
+        
+        with col_bcg_b:
+            if "❓ Question Marks (Soru İşaretleri)" in bcg_dict:
+                row = bcg_dict["❓ Question Marks (Soru İşaretleri)"]
+                st.metric(
+                    label="❓ Question Marks",
+                    value=f"{int(row['Şehir Sayısı'])} şehir",
+                    delta=f"↑ {row['Toplam PF']:,.0f}"
+                )
+        
+        # Alt satır: Cash Cows ve Dogs
+        col_bcg_c, col_bcg_d = st.columns(2)
+        
+        with col_bcg_c:
+            if "💰 Cash Cows (Nakit İnekleri)" in bcg_dict:
+                row = bcg_dict["💰 Cash Cows (Nakit İnekleri)"]
+                st.metric(
+                    label="💰 Cash Cows",
+                    value=f"{int(row['Şehir Sayısı'])} şehir",
+                    delta=f"↑ {row['Toplam PF']:,.0f}"
+                )
+        
+        with col_bcg_d:
+            if "🐕 Dogs (Düşük Öncelik)" in bcg_dict:
+                row = bcg_dict["🐕 Dogs (Düşük Öncelik)"]
+                st.metric(
+                    label="🐕 Dogs",
+                    value=f"{int(row['Şehir Sayısı'])} şehir",
+                    delta=f"↓ {row['Toplam PF']:,.0f}",
+                    delta_color="inverse"
+                )
     
     st.markdown("---")
     
