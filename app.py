@@ -1424,15 +1424,11 @@ with col_exp2:
         st.markdown("##### 📄 PDF Özet Raporu")
         st.caption("BCG Matrix ve temel metrikleri içeren özet rapor")
         
-        # PDF için özet veri hazırla
         from io import BytesIO
         from datetime import datetime
         
-        # BCG dağılımı
-        bcg_summary = investment_df_original.groupby('BCG Kategori').agg({
-            'Şehir': 'count',
-            'PF Kutu': 'sum'
-        }).reset_index()
+        # Top 10 şehir
+        top10_summary = investment_df_original.nlargest(10, 'PF Kutu')[['Şehir', 'Bölge', 'PF Kutu', 'Pazar Payı %']]
         
         # Bölge özeti
         bolge_summary = investment_df_original.groupby('Bölge').agg({
@@ -1440,8 +1436,11 @@ with col_exp2:
             'Pazar Payı %': 'mean'
         }).sort_values('PF Kutu', ascending=False).head(5).reset_index()
         
-        # Top 10 şehir
-        top10_summary = investment_df_original.nlargest(10, 'PF Kutu')[['Şehir', 'Bölge', 'PF Kutu', 'Pazar Payı %']]
+        # Strateji dağılımı
+        strateji_summary = investment_df_original.groupby('Yatırım Stratejisi').agg({
+            'Şehir': 'count',
+            'PF Kutu': 'sum'
+        }).reset_index()
         
         # PDF oluştur (basit text-based)
         pdf_content = f"""
@@ -1457,12 +1456,12 @@ with col_exp2:
 • Genel Pazar Payı: %{genel_pazar_payi:.1f}
 • Aktif Şehir Sayısı: {filtered_aktif_sehir}
 
-🎯 BCG MATRIX DAĞILIMI
+🎯 YATIRIM STRATEJİSİ DAĞILIMI
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
         
-        for idx, row in bcg_summary.iterrows():
-            pdf_content += f"• {row['BCG Kategori']}: {int(row['Şehir'])} şehir - {row['PF Kutu']:,.0f} PF Kutu\n"
+        for idx, row in strateji_summary.iterrows():
+            pdf_content += f"• {row['Yatırım Stratejisi']}: {int(row['Şehir'])} şehir - {row['PF Kutu']:,.0f} PF Kutu\n"
         
         pdf_content += f"""
 🏆 TOP 5 BÖLGE
@@ -1486,9 +1485,9 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
 """
         
         st.download_button(
-            label="📄 Özet Rapor İndir (PDF/TXT)",
+            label="📄 Özet Rapor İndir (TXT)",
             data=pdf_content.encode('utf-8'),
             file_name=f"turkiye_satis_raporu_{datetime.now().strftime('%Y%m%d_%H%M')}.txt",
             mime="text/plain",
-            help="Detaylı PDF raporu için Excel raporunu kullanabilirsiniz"
+            help="Genel özet ve top performansları içeren rapor"
         )
