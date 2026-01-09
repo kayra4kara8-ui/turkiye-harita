@@ -1233,36 +1233,59 @@ if len(investment_df_original) > 0:
     
     st.markdown("---")
     
-    # 4. PARALLEL COORDINATES - Çok boyutlu analiz
+    # 4. TOP 30 ŞEHİR - İNTERAKTİF TABLO
     st.markdown("#### 🔗 Çok Boyutlu Şehir Analizi (Top 30)")
+    st.caption("📊 Top 30 şehirin PF Kutu, Toplam Pazar ve Pazar Payı karşılaştırması")
     
     top30_df = investment_df_original.nlargest(30, 'PF Kutu').copy()
+    top30_df = top30_df.reset_index(drop=True)
+    top30_df.index = top30_df.index + 1
     
-    # Normalize değerler (0-100 arası)
-    top30_df['PF Kutu Norm'] = (top30_df['PF Kutu'] - top30_df['PF Kutu'].min()) / (top30_df['PF Kutu'].max() - top30_df['PF Kutu'].min()) * 100
-    top30_df['Toplam Kutu Norm'] = (top30_df['Toplam Kutu'] - top30_df['Toplam Kutu'].min()) / (top30_df['Toplam Kutu'].max() - top30_df['Toplam Kutu'].min()) * 100
+    # Görüntüleme için formatla
+    display_top30 = top30_df[['Şehir', 'Bölge', 'PF Kutu', 'Toplam Kutu', 'Pazar Payı %', 'Yatırım Stratejisi']].copy()
+    display_top30['PF Kutu'] = display_top30['PF Kutu'].apply(lambda x: f'{x:,.0f}')
+    display_top30['Toplam Kutu'] = display_top30['Toplam Kutu'].apply(lambda x: f'{x:,.0f}')
+    display_top30['Pazar Payı %'] = display_top30['Pazar Payı %'].apply(lambda x: f'{x:.1f}%')
     
-    fig_parallel = px.parallel_coordinates(
+    st.dataframe(
+        display_top30,
+        use_container_width=True,
+        hide_index=False,
+        height=600
+    )
+    
+    # Alternatif: Scatter Matrix
+    st.markdown("##### 📈 Metrik İlişkileri")
+    
+    fig_scatter_matrix = px.scatter_matrix(
         top30_df,
-        dimensions=['PF Kutu Norm', 'Toplam Kutu Norm', 'Pazar Payı %'],
+        dimensions=['PF Kutu', 'Toplam Kutu', 'Pazar Payı %'],
         color='Pazar Payı %',
-        color_continuous_scale='RdYlGn',
+        color_continuous_scale='Blues',
+        hover_name='Şehir',
+        hover_data={'Bölge': True, 'PF Kutu': ':,.0f', 'Toplam Kutu': ':,.0f', 'Pazar Payı %': ':.1f'},
         labels={
-            'PF Kutu Norm': 'PF Kutu',
-            'Toplam Kutu Norm': 'Toplam Pazar',
+            'PF Kutu': 'PF Kutu',
+            'Toplam Kutu': 'Toplam Pazar',
             'Pazar Payı %': 'Pazar Payı %'
         }
     )
     
-    fig_parallel.update_layout(
-        height=400,
+    fig_scatter_matrix.update_layout(
+        height=600,
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='#0f172a',
-        font=dict(color='#e2e8f0', size=11)
+        font=dict(color='#e2e8f0', size=10)
     )
     
-    st.plotly_chart(fig_parallel, use_container_width=True)
-    st.caption("📈 Her çizgi bir şehri temsil eder. Çizgilerin konumu şehrin her metrikte nasıl performans gösterdiğini gösterir.")
+    fig_scatter_matrix.update_traces(
+        diagonal_visible=False,
+        showupperhalf=False,
+        marker=dict(size=8, line=dict(width=1, color='rgba(255,255,255,0.3)'))
+    )
+    
+    st.plotly_chart(fig_scatter_matrix, use_container_width=True)
+    st.caption("📊 Her nokta bir şehir. Hover ile şehir adını görebilirsiniz. Metriklerin birbirleriyle ilişkisini görün.")
     
     st.markdown("---")
     
