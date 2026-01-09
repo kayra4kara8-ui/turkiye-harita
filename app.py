@@ -720,7 +720,6 @@ if len(investment_df_original) > 0:
                 y="Şehir",
                 orientation='h',
                 color="Yatırım Stratejisi",
-                text="Öncelik Skoru",
                 color_discrete_map={
                     "🚀 Agresif": "#EF4444",
                     "⚡ Hızlandırılmış": "#F59E0B",
@@ -729,7 +728,7 @@ if len(investment_df_original) > 0:
                     "👁️ İzleme": "#6B7280"
                 }
             )
-            fig_bar.update_traces(textposition='outside', texttemplate='%{text:.0f}')
+            fig_bar.update_traces(textposition='outside', texttemplate='%{x:.0f}')
         else:
             top10 = investment_df_original.nlargest(10, "PF Kutu")[["Şehir", "PF Kutu"]]
             fig_bar = px.bar(
@@ -740,7 +739,7 @@ if len(investment_df_original) > 0:
                 color="PF Kutu",
                 color_continuous_scale=["#3B82F6", "#1E40AF"]
             )
-            fig_bar.update_traces(textposition='outside', texttemplate='%{text:,.0f}')
+            fig_bar.update_traces(textposition='outside', texttemplate='%{x:,.0f}')
         
         fig_bar.update_layout(
             height=400, 
@@ -901,8 +900,9 @@ if len(investment_df_original) > 0:
                 side='right',
                 showgrid=False
             ),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            margin=dict(l=50, r=50, t=50, b=120)
+            showlegend=True,
+            legend=dict(x=0.5, y=1.1, orientation='h'),
+            margin=dict(l=60, r=60, t=80, b=120)
         )
         
         st.plotly_chart(fig_top15, use_container_width=True)
