@@ -1233,59 +1233,199 @@ if len(investment_df_original) > 0:
     
     st.markdown("---")
     
-    # 4. TOP 30 ŞEHİR - İNTERAKTİF TABLO
+    # 4. ÇOK BOYUTLU ŞEHİR ANALİZİ - PROFESYONEL
     st.markdown("#### 🔗 Çok Boyutlu Şehir Analizi (Top 30)")
-    st.caption("📊 Top 30 şehirin PF Kutu, Toplam Pazar ve Pazar Payı karşılaştırması")
+    st.caption("📊 Üç boyutlu metrik analizi: PF Kutu, Pazar Büyüklüğü ve Pazar Payı")
     
     top30_df = investment_df_original.nlargest(30, 'PF Kutu').copy()
-    top30_df = top30_df.reset_index(drop=True)
-    top30_df.index = top30_df.index + 1
     
-    # Görüntüleme için formatla
-    display_top30 = top30_df[['Şehir', 'Bölge', 'PF Kutu', 'Toplam Kutu', 'Pazar Payı %', 'Yatırım Stratejisi']].copy()
-    display_top30['PF Kutu'] = display_top30['PF Kutu'].apply(lambda x: f'{x:,.0f}')
-    display_top30['Toplam Kutu'] = display_top30['Toplam Kutu'].apply(lambda x: f'{x:,.0f}')
-    display_top30['Pazar Payı %'] = display_top30['Pazar Payı %'].apply(lambda x: f'{x:.1f}%')
+    col_3d1, col_3d2 = st.columns(2)
+    
+    with col_3d1:
+        st.markdown("##### 🌐 3D Metrik Uzayı")
+        
+        # 3D Scatter Plot
+        fig_3d = px.scatter_3d(
+            top30_df,
+            x='Toplam Kutu',
+            y='PF Kutu',
+            z='Pazar Payı %',
+            size='PF Kutu',
+            color='Pazar Payı %',
+            color_continuous_scale='Blues',
+            hover_name='Şehir',
+            hover_data={
+                'Bölge': True,
+                'Toplam Kutu': ':,.0f',
+                'PF Kutu': ':,.0f',
+                'Pazar Payı %': ':.1f',
+                'Yatırım Stratejisi': True
+            },
+            labels={
+                'Toplam Kutu': 'Pazar Büyüklüğü',
+                'PF Kutu': 'Bizim Hacmimiz',
+                'Pazar Payı %': 'Pazar Payımız (%)'
+            },
+            size_max=30
+        )
+        
+        fig_3d.update_layout(
+            height=550,
+            paper_bgcolor='rgba(0,0,0,0)',
+            scene=dict(
+                bgcolor='#0f172a',
+                xaxis=dict(
+                    title='Pazar Büyüklüğü →',
+                    backgroundcolor='#0f172a',
+                    gridcolor='rgba(148,163,184,0.2)',
+                    showbackground=True
+                ),
+                yaxis=dict(
+                    title='Bizim Hacmimiz →',
+                    backgroundcolor='#0f172a',
+                    gridcolor='rgba(148,163,184,0.2)',
+                    showbackground=True
+                ),
+                zaxis=dict(
+                    title='Pazar Payı % →',
+                    backgroundcolor='#0f172a',
+                    gridcolor='rgba(148,163,184,0.2)',
+                    showbackground=True
+                ),
+                camera=dict(
+                    eye=dict(x=1.5, y=1.5, z=1.3)
+                )
+            ),
+            font=dict(color='#e2e8f0', size=10)
+        )
+        
+        fig_3d.update_traces(
+            marker=dict(
+                line=dict(width=1, color='rgba(255,255,255,0.4)'),
+                opacity=0.9
+            )
+        )
+        
+        st.plotly_chart(fig_3d, use_container_width=True)
+        st.caption("🎯 3 eksende şehirlerin konumu. Büyük top = Yüksek hacim. Koyu mavi = Yüksek pazar payı.")
+    
+    with col_3d2:
+        st.markdown("##### 💎 Stratejik Konumlandırma")
+        
+        # Advanced Bubble Chart - Stratejiye göre
+        fig_bubble_adv = px.scatter(
+            top30_df,
+            x='Toplam Kutu',
+            y='Pazar Payı %',
+            size='PF Kutu',
+            color='Yatırım Stratejisi',
+            color_discrete_map={
+                "🚀 Agresif": "#EF4444",
+                "⚡ Hızlandırılmış": "#F59E0B",
+                "🛡️ Koruma": "#10B981",
+                "💎 Potansiyel": "#8B5CF6",
+                "👁️ İzleme": "#6B7280"
+            },
+            hover_name='Şehir',
+            hover_data={
+                'Bölge': True,
+                'Toplam Kutu': ':,.0f',
+                'PF Kutu': ':,.0f',
+                'Pazar Payı %': ':.1f'
+            },
+            labels={
+                'Toplam Kutu': 'Pazar Büyüklüğü',
+                'Pazar Payı %': 'Pazar Payımız (%)'
+            },
+            size_max=50
+        )
+        
+        fig_bubble_adv.update_layout(
+            height=550,
+            plot_bgcolor='#0f172a',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='#e2e8f0', size=10),
+            xaxis=dict(
+                title='Pazar Büyüklüğü (Toplam Kutu) →',
+                showgrid=True,
+                gridcolor='rgba(148,163,184,0.15)',
+                zeroline=False
+            ),
+            yaxis=dict(
+                title='Pazar Payımız (%) →',
+                showgrid=True,
+                gridcolor='rgba(148,163,184,0.15)',
+                zeroline=False
+            ),
+            legend=dict(
+                title='Yatırım Stratejisi',
+                orientation='v',
+                yanchor='top',
+                y=0.98,
+                xanchor='left',
+                x=0.01,
+                bgcolor='rgba(15,23,42,0.9)',
+                bordercolor='rgba(148,163,184,0.3)',
+                borderwidth=1
+            )
+        )
+        
+        fig_bubble_adv.update_traces(
+            marker=dict(
+                line=dict(width=2, color='rgba(255,255,255,0.5)'),
+                opacity=0.85
+            )
+        )
+        
+        st.plotly_chart(fig_bubble_adv, use_container_width=True)
+        st.caption("💡 Bubble boyutu = PF Kutu. Renk = Strateji. Sağ üst köşe = İdeal pozisyon.")
+    
+    st.markdown("---")
+    
+    # Detaylı Tablo
+    st.markdown("##### 📋 Detaylı Şehir Sıralaması")
+    
+    top30_display = top30_df.reset_index(drop=True)
+    top30_display.index = top30_display.index + 1
+    
+    display_cols = ['Şehir', 'Bölge', 'PF Kutu', 'Toplam Kutu', 'Pazar Payı %', 'Yatırım Stratejisi']
+    top30_display_formatted = top30_display[display_cols].copy()
+    
+    # Formatting
+    top30_display_formatted['PF Kutu'] = top30_display_formatted['PF Kutu'].apply(lambda x: f'{x:,.0f}')
+    top30_display_formatted['Toplam Kutu'] = top30_display_formatted['Toplam Kutu'].apply(lambda x: f'{x:,.0f}')
+    top30_display_formatted['Pazar Payı %'] = top30_display_formatted['Pazar Payı %'].apply(lambda x: f'{x:.1f}%')
+    
+    # Conditional formatting için stil
+    def highlight_top(row):
+        if row.name <= 5:
+            return ['background-color: rgba(16, 185, 129, 0.2)'] * len(row)
+        elif row.name <= 10:
+            return ['background-color: rgba(59, 130, 246, 0.2)'] * len(row)
+        else:
+            return [''] * len(row)
     
     st.dataframe(
-        display_top30,
+        top30_display_formatted,
         use_container_width=True,
         hide_index=False,
-        height=600
+        height=400
     )
     
-    # Alternatif: Scatter Matrix
-    st.markdown("##### 📈 Metrik İlişkileri")
+    # Metrik özeti
+    col_sum1, col_sum2, col_sum3, col_sum4 = st.columns(4)
     
-    fig_scatter_matrix = px.scatter_matrix(
-        top30_df,
-        dimensions=['PF Kutu', 'Toplam Kutu', 'Pazar Payı %'],
-        color='Pazar Payı %',
-        color_continuous_scale='Blues',
-        hover_name='Şehir',
-        hover_data={'Bölge': True, 'PF Kutu': ':,.0f', 'Toplam Kutu': ':,.0f', 'Pazar Payı %': ':.1f'},
-        labels={
-            'PF Kutu': 'PF Kutu',
-            'Toplam Kutu': 'Toplam Pazar',
-            'Pazar Payı %': 'Pazar Payı %'
-        }
-    )
+    with col_sum1:
+        st.metric("🏆 Top 30 Toplam PF", f"{top30_df['PF Kutu'].sum():,.0f}")
     
-    fig_scatter_matrix.update_layout(
-        height=600,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='#0f172a',
-        font=dict(color='#e2e8f0', size=10)
-    )
+    with col_sum2:
+        st.metric("📊 Ortalama Pazar Payı", f"%{top30_df['Pazar Payı %'].mean():.1f}")
     
-    fig_scatter_matrix.update_traces(
-        diagonal_visible=False,
-        showupperhalf=False,
-        marker=dict(size=8, line=dict(width=1, color='rgba(255,255,255,0.3)'))
-    )
+    with col_sum3:
+        st.metric("🎯 En Yüksek Pay", f"%{top30_df['Pazar Payı %'].max():.1f}")
     
-    st.plotly_chart(fig_scatter_matrix, use_container_width=True)
-    st.caption("📊 Her nokta bir şehir. Hover ile şehir adını görebilirsiniz. Metriklerin birbirleriyle ilişkisini görün.")
+    with col_sum4:
+        st.metric("📈 Toplam Pazar", f"{top30_df['Toplam Kutu'].sum():,.0f}")
     
     st.markdown("---")
     
