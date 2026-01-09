@@ -797,7 +797,7 @@ if len(investment_df_original) > 0:
         path=[px.Constant("TÜRKİYE"), 'Bölge', 'Strateji_Kısa', 'Şehir'],
         values='PF Kutu',
         color='Pazar Payı %',
-        color_continuous_scale='RdYlGn',
+        color_continuous_scale='Blues',
         color_continuous_midpoint=treemap_df['Pazar Payı %'].median(),
         hover_data={
             'PF Kutu': ':,.0f',
@@ -863,7 +863,6 @@ if len(investment_df_original) > 0:
             x=top15['Şehir'],
             y=top15['PF Kutu'],
             marker_color='#3B82F6',
-            yaxis='y',
             text=top15['PF Kutu'].apply(lambda x: f'{x:,.0f}'),
             textposition='outside',
             textfont=dict(size=9)
@@ -884,25 +883,19 @@ if len(investment_df_original) > 0:
             plot_bgcolor='#1a1a2e',
             paper_bgcolor='rgba(0,0,0,0)',
             font=dict(color='white', size=10),
-            xaxis=dict(tickangle=-45, showgrid=False),
+            xaxis=dict(tickangle=-45),
             yaxis=dict(
                 title='PF Kutu',
                 titlefont=dict(color='#3B82F6'),
-                tickfont=dict(color='#3B82F6'),
-                showgrid=True,
-                gridcolor='rgba(255,255,255,0.1)'
+                tickfont=dict(color='#3B82F6')
             ),
             yaxis2=dict(
                 title='Pazar Payı %',
                 titlefont=dict(color='#F59E0B'),
                 tickfont=dict(color='#F59E0B'),
                 overlaying='y',
-                side='right',
-                showgrid=False
-            ),
-            showlegend=True,
-            legend=dict(x=0.5, y=1.1, orientation='h'),
-            margin=dict(l=60, r=60, t=80, b=120)
+                side='right'
+            )
         )
         
         st.plotly_chart(fig_top15, use_container_width=True)
