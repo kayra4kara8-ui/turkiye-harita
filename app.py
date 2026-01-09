@@ -1596,32 +1596,6 @@ if len(investment_df_original) > 0:
         st.metric("👑 Top 5", f"%{(top_5/total_pf*100):.1f}" if total_pf>0 else "N/A")
     
     st.markdown("---")
-    
-    # 💎 4. PRIORITY MATRIX
-    st.markdown("### 💎 Yatırım Öncelik Matrisi")
-    
-    priority_df = investment_df_original.copy()
-    priority_df['Büyüme_Norm'] = (priority_df['Büyüme Alanı'] - priority_df['Büyüme Alanı'].min()) / (priority_df['Büyüme Alanı'].max() - priority_df['Büyüme Alanı'].min())
-    priority_df['Performans_Norm'] = (priority_df['PF Kutu'] - priority_df['PF Kutu'].min()) / (priority_df['PF Kutu'].max() - priority_df['PF Kutu'].min())
-    priority_df['Öncelik Skoru'] = (priority_df['Büyüme_Norm'] * 60) + (priority_df['Performans_Norm'] * 40)
-    
-    priority_top = priority_df.nlargest(30, 'Öncelik Skoru')
-    
-    fig_priority = px.scatter(
-        priority_top, x='Büyüme_Norm', y='Performans_Norm', size='Toplam Kutu',
-        color='Yatırım Stratejisi',
-        color_discrete_map={'🚀 Agresif':'#EF4444', '⚡ Hızlandırılmış':'#F59E0B', 
-                            '🛡️ Koruma':'#10B981', '💎 Potansiyel':'#8B5CF6', '👁️ İzleme':'#6B7280'},
-        hover_name='Şehir', size_max=60
-    )
-    fig_priority.update_layout(height=650, plot_bgcolor='#0f172a', paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_priority, use_container_width=True)
-    
-    st.markdown("#### 🏆 Top 10 Öncelikli Şehir")
-    priority_top10 = priority_df.nlargest(10, 'Öncelik Skoru')[['Şehir', 'Bölge', 'PF Kutu', 'Öncelik Skoru', 'Yatırım Stratejisi']].copy()
-    priority_top10.index = range(1, 11)
-    st.dataframe(priority_top10, use_container_width=True)
-
    
 # =============================================================================
 # EXPORT ÖZELLİKLERİ
@@ -1864,6 +1838,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
