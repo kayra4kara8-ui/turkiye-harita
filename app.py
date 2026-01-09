@@ -607,7 +607,7 @@ if len(investment_df_original) > 0:
         **🚀 Agresif Yatırım**
         - **Durum**: Büyük/orta pazar + Düşük pazar payımız + Yüksek büyüme alanı
         - **Anlam**: Pazarda çok büyük fırsat var, rakiplerimiz güçlü ama biz düşükteyiz
-        - **Aksiyon**: En yüksek ROI potansiyeli! Agresif kaynak, promosyon, ve ekip yatırımı
+        - **Aksiyon**: En yüksek ROI potansiyeli! Agresif kaynak, promosyon
         - **Hedef**: Pazar payını hızla artırmak, rakiplerin gerisinden çıkmak
         
         **⚡ Hızlandırılmış Yatırım**
@@ -2344,6 +2344,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
