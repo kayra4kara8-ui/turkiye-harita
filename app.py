@@ -1603,10 +1603,10 @@ if len(investment_df_original) > 0:
 
 
 # ============================================================================
-# YENİ ÖZELLİK 1: TİCARET MÜDÜRÜ PERFORMANCE SCORECARD
+# YENİ ÖZELLİK 1: TİCARET MÜDÜRÜ PERFORMANS SCORECARD
 # ============================================================================
 st.markdown("---")
-st.markdown("### 👥 Ticaret Müdürü Performance Scorecard")
+st.markdown("### 👥 Ticaret Müdürü Performans Scorecard")
 
 if len(investment_df_original) > 0:
     mudur_performance = investment_df_original.groupby('Ticaret Müdürü').agg({
@@ -1943,30 +1943,47 @@ if len(investment_df_original) > 0:
         yref='y2'
     )
     
+    # Layout ayarları
     fig_pareto.update_layout(
         title="Pareto Analizi: Hangi şehirler %80 satışı yapıyor?",
         height=500,
         plot_bgcolor='#0f172a',
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='white'),
-        xaxis=dict(
-            tickangle=-45,
-            title='Şehir'
-        ),
-        yaxis=dict(
-            title='PF Kutu',
-            titlefont=dict(color='#3B82F6'),
-            tickfont=dict(color='#3B82F6')
-        ),
+        showlegend=True
+    )
+    
+    # Font
+    fig_pareto.update_layout(
+        font=dict(color='white')
+    )
+    
+    # X axis
+    fig_pareto.update_xaxes(
+        tickangle=-45,
+        title='Şehir'
+    )
+    
+    # Y axis (sol)
+    fig_pareto.update_yaxes(
+        title='PF Kutu',
+        titlefont=dict(color='#3B82F6'),
+        tickfont=dict(color='#3B82F6')
+    )
+    
+    # Y2 axis (sağ) - ayrı bir update ile
+    fig_pareto.update_layout(
         yaxis2=dict(
             title='Kümülatif %',
-            titlefont=dict(color='#1E40AF'),
-            tickfont=dict(color='#1E40AF'),
+            titlefont_color='#1E40AF',
+            tickfont_color='#1E40AF',
             overlaying='y',
             side='right',
             range=[0, 100]
-        ),
-        showlegend=True,
+        )
+    )
+    
+    # Legend
+    fig_pareto.update_layout(
         legend=dict(
             x=0.7,
             y=0.95,
@@ -2338,6 +2355,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
