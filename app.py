@@ -781,110 +781,165 @@ if len(investment_df_original) > 0:
         st.plotly_chart(fig_pie, use_container_width=True)
     
     # İYİLEŞTİRİLMİŞ Scatter plot: Pazar Büyüklüğü vs Pazar Payı
-    st.markdown("#### 💡 Pazar Haritası: Büyüklük vs Pazar Payı")
+    st.markdown("#### 💡 Stratejik Pazar Matrisi (BCG Matrix)")
+    st.caption("🎯 Her nokta bir şehir • Büyüklük = PF Kutu hacmimiz • Konumu = Stratejik pozisyonu")
     
-    # Nokta boyutlarını normalize et (çok küçük noktaları önlemek için)
+    # Veriyi hazırla
     scatter_df = investment_df_original.copy()
-    scatter_df["Nokta Boyutu"] = scatter_df["PF Kutu"]
     
-    # Min-max normalization ile boyutları 15-80 arasına getir (daha dengeli)
-    min_val = scatter_df["Nokta Boyutu"].min()
-    max_val = scatter_df["Nokta Boyutu"].max()
-    if max_val > min_val:
-        scatter_df["Nokta Boyutu"] = 15 + (scatter_df["Nokta Boyutu"] - min_val) / (max_val - min_val) * 65
-    else:
-        scatter_df["Nokta Boyutu"] = 40
+    # Pazar büyüklüğü ve pazar payı için eşik değerleri hesapla (median)
+    pazar_median = scatter_df["Toplam Kutu"].median()
+    pay_median = scatter_df["Pazar Payı %"].median()
     
-    # Modern renk paleti
-    color_map = {
-        "🚀 Agresif": "#EF4444",         # Kırmızı
-        "⚡ Hızlandırılmış": "#F59E0B",  # Turuncu
-        "🛡️ Koruma": "#10B981",         # Yeşil
-        "💎 Potansiyel": "#8B5CF6",     # Mor
-        "👁️ İzleme": "#6B7280"          # Gri
+    # 4 Kadrana ayır (BCG Matrix mantığı)
+    def assign_quadrant(row):
+        if row["Toplam Kutu"] >= pazar_median and row["Pazar Payı %"] >= pay_median:
+            return "⭐ YILDIZLAR"  # Büyük pazar + Yüksek pay = En iyi
+        elif row["Toplam Kutu"] >= pazar_median and row["Pazar Payı %"] < pay_median:
+            return "❓ SORU İŞARETİ"  # Büyük pazar + Düşük pay = Fırsat
+        elif row["Toplam Kutu"] < pazar_median and row["Pazar Payı %"] >= pay_median:
+            return "💰 NAKİT İNEKLERİ"  # Küçük pazar + Yüksek pay = Stabil
+        else:
+            return "🔻 DÜŞÜK ÖNCELİK"  # Küçük pazar + Düşük pay
+    
+    scatter_df["Kadran"] = scatter_df.apply(assign_quadrant, axis=1)
+    
+    # Premium renk paleti
+    color_map_quadrant = {
+        "⭐ YILDIZLAR": "#10B981",        # Parlak yeşil
+        "❓ SORU İŞARETİ": "#F59E0B",    # Canlı turuncu
+        "💰 NAKİT İNEKLERİ": "#3B82F6",  # Güven mavi
+        "🔻 DÜŞÜK ÖNCELİK": "#6B7280"    # Nötr gri
     }
     
-    fig_scatter = px.scatter(
+    # Nokta boyutlarını normalize et (20-55 arası)
+    min_val = scatter_df["PF Kutu"].min()
+    max_val = scatter_df["PF Kutu"].max()
+    if max_val > min_val:
+        scatter_df["Nokta Boyutu"] = 20 + (scatter_df["PF Kutu"] - min_val) / (max_val - min_val) * 35
+    else:
+        scatter_df["Nokta Boyutu"] = 35
+    
+    # Modern scatter plot
+    fig_matrix = px.scatter(
         scatter_df,
         x="Toplam Kutu",
         y="Pazar Payı %",
         size="Nokta Boyutu",
-        color="Yatırım Stratejisi",
-        color_discrete_map=color_map,
+        color="Kadran",
+        color_discrete_map=color_map_quadrant,
         hover_name="Şehir",
         hover_data={
-            "Toplam Kutu": ":,.0f", 
-            "PF Kutu": ":,.0f", 
+            "Toplam Kutu": ":,.0f",
+            "PF Kutu": ":,.0f",
             "Pazar Payı %": ":.1f",
-            "Nokta Boyutu": False
+            "Nokta Boyutu": False,
+            "Kadran": True,
+            "Yatırım Stratejisi": True
         },
         labels={
             "Toplam Kutu": "Pazar Büyüklüğü (Toplam Kutu)",
             "Pazar Payı %": "Pazar Payımız (%)"
         },
-        title="Her nokta bir şehir - Büyüklük = PF Kutu hacmimiz",
-        size_max=50
+        size_max=55
     )
     
-    # Tasarım iyileştirmeleri
-    fig_scatter.update_layout(
-        height=550,
-        plot_bgcolor='rgba(245,245,245,0.5)',
+    # Kadran çizgileri (median çizgileri)
+    fig_matrix.add_hline(
+        y=pay_median, 
+        line_dash="dot", 
+        line_color="rgba(148,163,184,0.6)", 
+        line_width=2
+    )
+    fig_matrix.add_vline(
+        x=pazar_median, 
+        line_dash="dot", 
+        line_color="rgba(148,163,184,0.6)", 
+        line_width=2
+    )
+    
+    # Kadran etiketleri (arka planda)
+    annotations = [
+        dict(x=pazar_median * 1.5, y=pay_median * 1.5, text="⭐ YILDIZLAR", 
+             showarrow=False, font=dict(size=16, color="rgba(16,185,129,0.3)", family="Arial Black")),
+        dict(x=pazar_median * 1.5, y=pay_median * 0.5, text="❓ SORU İŞARETİ", 
+             showarrow=False, font=dict(size=16, color="rgba(245,158,11,0.3)", family="Arial Black")),
+        dict(x=pazar_median * 0.5, y=pay_median * 1.5, text="💰 NAKİT İNEKLERİ", 
+             showarrow=False, font=dict(size=16, color="rgba(59,130,246,0.3)", family="Arial Black")),
+        dict(x=pazar_median * 0.5, y=pay_median * 0.5, text="🔻 DÜŞÜK ÖNCELİK", 
+             showarrow=False, font=dict(size=16, color="rgba(107,114,128,0.3)", family="Arial Black"))
+    ]
+    
+    # Layout - Modern dark mode
+    fig_matrix.update_layout(
+        height=600,
+        plot_bgcolor='#0f172a',  # Slate 900
         paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#e2e8f0', size=12),  # Slate 200
         xaxis=dict(
             showgrid=True,
-            gridwidth=1,
-            gridcolor='rgba(200,200,200,0.3)',
-            zeroline=False
+            gridwidth=0.5,
+            gridcolor='rgba(148,163,184,0.15)',  # Slate 400 transparent
+            zeroline=False,
+            title_font=dict(size=13, color='#94a3b8')
         ),
         yaxis=dict(
             showgrid=True,
-            gridwidth=1,
-            gridcolor='rgba(200,200,200,0.3)',
-            zeroline=False
+            gridwidth=0.5,
+            gridcolor='rgba(148,163,184,0.15)',
+            zeroline=False,
+            title_font=dict(size=13, color='#94a3b8')
         ),
         legend=dict(
             orientation="v",
             yanchor="top",
-            y=0.99,
+            y=0.98,
             xanchor="left",
             x=0.01,
-            bgcolor="rgba(255,255,255,0.9)",
-            bordercolor="rgba(0,0,0,0.1)",
-            borderwidth=1
-        )
+            bgcolor="rgba(15,23,42,0.85)",  # Slate 900 semi-transparent
+            bordercolor="rgba(148,163,184,0.3)",
+            borderwidth=1,
+            font=dict(size=11, color='#e2e8f0')
+        ),
+        annotations=annotations
     )
     
-    # Nokta kenarları ekle
-    fig_scatter.update_traces(
+    # Nokta stilleri - premium görünüm
+    fig_matrix.update_traces(
         marker=dict(
-            line=dict(width=1.5, color='rgba(255,255,255,0.6)')
+            line=dict(width=2, color='rgba(226,232,240,0.4)'),  # Beyaz kenarlık
+            opacity=0.9
         )
     )
     
-    st.plotly_chart(fig_scatter, use_container_width=True)
+    st.plotly_chart(fig_matrix, use_container_width=True)
     
-    # Rehber kartları yan yana daha kompakt
+    # BCG Matrix Rehberi - Modern kartlar
+    st.markdown("---")
     col_guide1, col_guide2 = st.columns(2)
     with col_guide1:
-        st.info("""
-        **🎯 Sağ Üst Bölge**  
-        🛡️ Koruma stratejisi  
-        Büyük pazar + Yüksek payımız = Lider pozisyon
+        st.success("""
+        **⭐ YILDIZLAR (Sağ Üst)**  
+        Büyük pazar + Yüksek pazar payımız  
+        → Lider konumdayız, yatırım yaparak büyümeye devam  
+        → Pazar payını koruyup genişletmek kritik
         
-        **🚀 Sağ Alt Bölge**  
-        🚀 Agresif strateji  
-        Büyük pazar + Düşük payımız = En yüksek fırsat!
+        **❓ SORU İŞARETİ (Sağ Alt)**  
+        Büyük pazar + Düşük pazar payımız  
+        → EN BÜYÜK FIRSATLAR! Agresif yatırım gerekli  
+        → Yıldız olmak için agresif stratejiler uygula
         """)
     with col_guide2:
         st.info("""
-        **💎 Sol Üst Bölge**  
-        Niş liderlikler  
-        Küçük pazar + Yüksek payımız
+        **💰 NAKİT İNEKLERİ (Sol Üst)**  
+        Küçük pazar + Yüksek pazar payımız  
+        → Stabil gelir kaynağı, minimal yatırım  
+        → Kazandığımız parayı diğer alanlara aktar
         
-        **👁️ Sol Alt Bölge**  
-        👁️ İzleme stratejisi  
-        Küçük pazar + Düşük payımız = Düşük öncelik
+        **🔻 DÜŞÜK ÖNCELİK (Sol Alt)**  
+        Küçük pazar + Düşük pazar payımız  
+        → Çok düşük öncelik, izleme modunda  
+        → Kaynakları buraya harcama
         """)
 
 # =============================================================================
