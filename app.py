@@ -1488,9 +1488,6 @@ if len(investment_df_original) > 0:
 
 import plotly.express as px
 
-st.markdown("---")
-st.subheader("📊 Görsel Analizler")
-
 if len(investment_df_original) > 0:
     
     # [Document'teki tüm grafikler buraya]
@@ -1900,5 +1897,6 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
