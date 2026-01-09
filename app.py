@@ -1597,37 +1597,6 @@ if len(investment_df_original) > 0:
     
     st.markdown("---")
     
-    # 🎨 3. PARALLEL COORDINATES
-    st.markdown("### 🎨 Paralel Koordinat Analizi")
-    from sklearn.preprocessing import MinMaxScaler
-    
-    parallel_df = investment_df_original.nlargest(30, 'PF Kutu').copy()
-    scaler = MinMaxScaler()
-    metrics = ['PF Kutu', 'Toplam Kutu', 'Pazar Payı %', 'Büyüme Alanı']
-    parallel_df[metrics] = scaler.fit_transform(parallel_df[metrics])
-    
-    strateji_map = {'🚀 Agresif': 5, '⚡ Hızlandırılmış': 4, '🛡️ Koruma': 3, '💎 Potansiyel': 2, '👁️ İzleme': 1}
-    parallel_df['Strateji_Num'] = parallel_df['Yatırım Stratejisi'].map(strateji_map)
-    color_map_parallel = {'🚀 Agresif': 0, '⚡ Hızlandırılmış': 1, '🛡️ Koruma': 2, '💎 Potansiyel': 3, '👁️ İzleme': 4}
-    parallel_df['color_code'] = parallel_df['Yatırım Stratejisi'].map(color_map_parallel)
-    
-    fig_parallel = go.Figure(data=go.Parcoords(
-        line=dict(color=parallel_df['color_code'], 
-                  colorscale=[[0,'#EF4444'],[0.25,'#F59E0B'],[0.5,'#10B981'],[0.75,'#8B5CF6'],[1,'#6B7280']]),
-        dimensions=[
-            dict(range=[0,1], label='PF Kutu', values=parallel_df['PF Kutu']),
-            dict(range=[0,1], label='Toplam', values=parallel_df['Toplam Kutu']),
-            dict(range=[0,1], label='Pazar %', values=parallel_df['Pazar Payı %']),
-            dict(range=[0,1], label='Büyüme', values=parallel_df['Büyüme Alanı']),
-            dict(range=[1,5], label='Strateji', values=parallel_df['Strateji_Num'],
-                 tickvals=[1,2,3,4,5], ticktext=['İzleme','Potansiyel','Koruma','Hızlandırılmış','Agresif'])
-        ]
-    ))
-    fig_parallel.update_layout(height=500, paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
-    st.plotly_chart(fig_parallel, use_container_width=True)
-    
-    st.markdown("---")
-    
     # 💎 4. PRIORITY MATRIX
     st.markdown("### 💎 Yatırım Öncelik Matrisi")
     
@@ -1895,6 +1864,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
