@@ -704,8 +704,7 @@ st.dataframe(
 # =============================================================================
 import plotly.express as px
 
-st.markdown("---")
-st.subheader("📊 Görsel Analizler")
+
 
 if len(investment_df_original) > 0:
     col_viz1, col_viz2 = st.columns(2)
@@ -1901,4 +1900,5 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
