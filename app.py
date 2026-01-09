@@ -901,14 +901,8 @@ if len(investment_df_original) > 0:
                 side='right',
                 showgrid=False
             ),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            ),
-            margin=dict(b=120)
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=50, r=50, t=50, b=120)
         )
         
         st.plotly_chart(fig_top15, use_container_width=True)
@@ -1058,6 +1052,162 @@ if len(investment_df_original) > 0:
     )
     
     st.plotly_chart(fig_heatmap, use_container_width=True)
+    
+    st.markdown("---")
+    
+    # 8. BCG MATRIX - Stratejik Pozisyonlama (MAVİ TONLARI)
+    st.markdown("#### 🎯 BCG Matrix - Stratejik Pazar Pozisyonları")
+    st.caption("⭐ Yıldızlar | ❓ Soru İşaretleri | 💰 Nakit İnekleri | 🐕 Köpekler")
+    
+    col_bcg1, col_bcg2 = st.columns([2, 1])
+    
+    with col_bcg1:
+        # BCG Matrix hesaplamaları
+        scatter_df = investment_df_original.copy()
+        
+        # Median değerler
+        pazar_median = scatter_df["Toplam Kutu"].median()
+        pay_median = scatter_df["Pazar Payı %"].median()
+        
+        # BCG Kadran atama
+        def assign_bcg_quadrant(row):
+            if row["Toplam Kutu"] >= pazar_median and row["Pazar Payı %"] >= pay_median:
+                return "⭐ Yıldızlar"
+            elif row["Toplam Kutu"] >= pazar_median and row["Pazar Payı %"] < pay_median:
+                return "❓ Soru İşaretleri"
+            elif row["Toplam Kutu"] < pazar_median and row["Pazar Payı %"] >= pay_median:
+                return "💰 Nakit İnekleri"
+            else:
+                return "🐕 Köpekler"
+        
+        scatter_df["BCG Kategori"] = scatter_df.apply(assign_bcg_quadrant, axis=1)
+        
+        # Mavi tonları renk paleti
+        color_map_bcg = {
+            "⭐ Yıldızlar": "#1E40AF",
+            "❓ Soru İşaretleri": "#3B82F6",
+            "💰 Nakit İnekleri": "#60A5FA",
+            "🐕 Köpekler": "#93C5FD"
+        }
+        
+        # Nokta boyutları
+        min_val = scatter_df["PF Kutu"].min()
+        max_val = scatter_df["PF Kutu"].max()
+        if max_val > min_val:
+            scatter_df["Nokta Boyutu"] = 20 + (scatter_df["PF Kutu"] - min_val) / (max_val - min_val) * 40
+        else:
+            scatter_df["Nokta Boyutu"] = 35
+        
+        # BCG Scatter Plot
+        fig_bcg = px.scatter(
+            scatter_df,
+            x="Toplam Kutu",
+            y="Pazar Payı %",
+            size="Nokta Boyutu",
+            color="BCG Kategori",
+            color_discrete_map=color_map_bcg,
+            hover_name="Şehir",
+            hover_data={
+                "Toplam Kutu": ":,.0f",
+                "PF Kutu": ":,.0f",
+                "Pazar Payı %": ":.1f",
+                "Nokta Boyutu": False,
+                "BCG Kategori": True
+            },
+            labels={
+                "Toplam Kutu": "Pazar Büyüklüğü →",
+                "Pazar Payı %": "Pazar Payımız (%) →"
+            },
+            size_max=50
+        )
+        
+        # Kadran çizgileri
+        fig_bcg.add_hline(y=pay_median, line_dash="dash", line_color="rgba(255,255,255,0.4)", line_width=2)
+        fig_bcg.add_vline(x=pazar_median, line_dash="dash", line_color="rgba(255,255,255,0.4)", line_width=2)
+        
+        # Kadran etiketleri
+        max_x = scatter_df["Toplam Kutu"].max()
+        max_y = scatter_df["Pazar Payı %"].max()
+        
+        annotations = [
+            dict(x=pazar_median + (max_x - pazar_median) * 0.5, y=pay_median + (max_y - pay_median) * 0.5,
+                 text="⭐<br>YILDIZLAR", showarrow=False,
+                 font=dict(size=18, color="rgba(30,64,175,0.3)", family="Arial Black")),
+            dict(x=pazar_median + (max_x - pazar_median) * 0.5, y=pay_median * 0.5,
+                 text="❓<br>SORU İŞARETLERİ", showarrow=False,
+                 font=dict(size=18, color="rgba(59,130,246,0.3)", family="Arial Black")),
+            dict(x=pazar_median * 0.5, y=pay_median + (max_y - pay_median) * 0.5,
+                 text="💰<br>NAKİT İNEKLERİ", showarrow=False,
+                 font=dict(size=18, color="rgba(96,165,250,0.3)", family="Arial Black")),
+            dict(x=pazar_median * 0.5, y=pay_median * 0.5,
+                 text="🐕<br>KÖPEKLER", showarrow=False,
+                 font=dict(size=18, color="rgba(147,197,253,0.3)", family="Arial Black"))
+        ]
+        
+        # Layout
+        fig_bcg.update_layout(
+            height=600,
+            plot_bgcolor='#0f172a',
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='#e2e8f0', size=11),
+            xaxis=dict(showgrid=True, gridwidth=0.5, gridcolor='rgba(148,163,184,0.15)', zeroline=False),
+            yaxis=dict(showgrid=True, gridwidth=0.5, gridcolor='rgba(148,163,184,0.15)', zeroline=False),
+            legend=dict(orientation="v", yanchor="top", y=0.98, xanchor="left", x=0.01,
+                       bgcolor="rgba(15,23,42,0.9)", bordercolor="rgba(148,163,184,0.3)", borderwidth=1),
+            annotations=annotations
+        )
+        
+        fig_bcg.update_traces(marker=dict(line=dict(width=2, color='rgba(255,255,255,0.5)'), opacity=0.85))
+        
+        st.plotly_chart(fig_bcg, use_container_width=True)
+    
+    with col_bcg2:
+        st.markdown("##### 📚 BCG Matrix Rehberi")
+        
+        bcg_stats = scatter_df.groupby('BCG Kategori').agg({
+            'Şehir': 'count',
+            'PF Kutu': 'sum',
+            'Pazar Payı %': 'mean'
+        }).reset_index()
+        bcg_stats.columns = ['Kategori', 'Şehir Sayısı', 'Toplam PF', 'Ort. Pay']
+        
+        st.success("""
+        **⭐ YILDIZLAR**  
+        Büyük pazar + Yüksek pay  
+        → Lider pozisyonlar  
+        → Büyümeye devam et
+        """)
+        
+        st.info("""
+        **❓ SORU İŞARETLERİ**  
+        Büyük pazar + Düşük pay  
+        → En yüksek fırsatlar!  
+        → Agresif yatırım
+        """)
+        
+        st.warning("""
+        **💰 NAKİT İNEKLERİ**  
+        Küçük pazar + Yüksek pay  
+        → Stabil gelir  
+        → Minimal yatırım
+        """)
+        
+        st.error("""
+        **🐕 KÖPEKLER**  
+        Küçük pazar + Düşük pay  
+        → Düşük öncelik  
+        → İzleme modu
+        """)
+        
+        st.markdown("---")
+        st.markdown("##### 📊 Dağılım")
+        
+        for idx, row in bcg_stats.iterrows():
+            st.metric(
+                label=row['Kategori'],
+                value=f"{int(row['Şehir Sayısı'])} şehir",
+                delta=f"{row['Toplam PF']:,.0f}"
+            )
     
     st.markdown("---")
     
