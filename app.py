@@ -1058,16 +1058,6 @@ if len(investment_df_original) > 0:
     )
     
     st.plotly_chart(fig_heatmap, use_container_width=True)
-
-        legend=dict(
-            bgcolor="rgba(15,23,42,0.85)",
-            bordercolor="rgba(148,163,184,0.3)",
-            borderwidth=1
-        )
-    )
-    
-    st.plotly_chart(fig_bubble, use_container_width=True)
-    st.caption("🎯 Sadece en yüksek PF Kutu hacmine sahip 20 şehir gösteriliyor")
     
     st.markdown("---")
     
