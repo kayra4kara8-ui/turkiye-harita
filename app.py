@@ -851,32 +851,26 @@ if len(investment_df_original) > 0:
         st.plotly_chart(fig_sunburst, use_container_width=True)
     
     with col_sun2:
-        st.markdown("#### 📊 Top 15 - PF Kutu vs Pazar Payı")
-        st.caption("🏆 En yüksek hacimli 15 şehir - Dual axis")
+        st.markdown("#### 📊 Top 15 Şehir - PF Kutu Hacmi")
+        st.caption("🏆 En yüksek PF Kutu hacmine sahip 15 şehir")
         
         top15 = investment_df_original.nlargest(15, 'PF Kutu').copy()
         
-        fig_top15 = go.Figure()
+        fig_top15 = px.bar(
+            top15,
+            x='Şehir',
+            y='PF Kutu',
+            color='Pazar Payı %',
+            color_continuous_scale='Blues',
+            text='PF Kutu',
+            hover_data={'PF Kutu': ':,.0f', 'Pazar Payı %': ':.1f', 'Toplam Kutu': ':,.0f'}
+        )
         
-        fig_top15.add_trace(go.Bar(
-            name='PF Kutu',
-            x=top15['Şehir'],
-            y=top15['PF Kutu'],
-            marker_color='#3B82F6',
-            text=top15['PF Kutu'].apply(lambda x: f'{x:,.0f}'),
+        fig_top15.update_traces(
+            texttemplate='%{text:,.0f}',
             textposition='outside',
-            textfont=dict(size=9)
-        ))
-        
-        fig_top15.add_trace(go.Scatter(
-            name='Pazar Payı %',
-            x=top15['Şehir'],
-            y=top15['Pazar Payı %'],
-            mode='lines+markers',
-            marker=dict(size=10, color='#F59E0B'),
-            line=dict(width=3, color='#F59E0B'),
-            yaxis='y2'
-        ))
+            textfont=dict(size=9, color='white')
+        )
         
         fig_top15.update_layout(
             height=500,
@@ -884,18 +878,8 @@ if len(investment_df_original) > 0:
             paper_bgcolor='rgba(0,0,0,0)',
             font=dict(color='white', size=10),
             xaxis=dict(tickangle=-45),
-            yaxis=dict(
-                title='PF Kutu',
-                titlefont=dict(color='#3B82F6'),
-                tickfont=dict(color='#3B82F6')
-            ),
-            yaxis2=dict(
-                title='Pazar Payı %',
-                titlefont=dict(color='#F59E0B'),
-                tickfont=dict(color='#F59E0B'),
-                overlaying='y',
-                side='right'
-            )
+            yaxis=dict(title='PF Kutu'),
+            showlegend=False
         )
         
         st.plotly_chart(fig_top15, use_container_width=True)
