@@ -1034,7 +1034,7 @@ if len(investment_df_original) > 0:
     
     # 8. BCG MATRIX - Stratejik Pozisyonlama (MAVİ TONLARI)
     st.markdown("#### 🎯 BCG Matrix - Stratejik Pazar Pozisyonları")
-    st.caption("⭐ Yıldızlar | ❓ Soru İşaretleri | 💰 Nakit İnekleri | 🐕 Köpekler")
+    st.caption("⭐ Stars | ❓ Question Marks | 💰 Cash Cows | 🐕 Dogs")
     
     col_bcg1, col_bcg2 = st.columns([2, 1])
     
@@ -1049,22 +1049,22 @@ if len(investment_df_original) > 0:
         # BCG Kadran atama
         def assign_bcg_quadrant(row):
             if row["Toplam Kutu"] >= pazar_median and row["Pazar Payı %"] >= pay_median:
-                return "⭐ Yıldızlar"
+                return "⭐ Stars (Yıldızlar)"
             elif row["Toplam Kutu"] >= pazar_median and row["Pazar Payı %"] < pay_median:
-                return "❓ Soru İşaretleri"
+                return "❓ Question Marks (Soru İşaretleri)"
             elif row["Toplam Kutu"] < pazar_median and row["Pazar Payı %"] >= pay_median:
-                return "💰 Nakit İnekleri"
+                return "💰 Cash Cows (Nakit İnekleri)"
             else:
-                return "🐕 Köpekler"
+                return "🐕 Dogs (Düşük Öncelik)"
         
         scatter_df["BCG Kategori"] = scatter_df.apply(assign_bcg_quadrant, axis=1)
         
         # Mavi tonları renk paleti
         color_map_bcg = {
-            "⭐ Yıldızlar": "#1E40AF",
-            "❓ Soru İşaretleri": "#3B82F6",
-            "💰 Nakit İnekleri": "#60A5FA",
-            "🐕 Köpekler": "#93C5FD"
+            "⭐ Stars (Yıldızlar)": "#1E40AF",
+            "❓ Question Marks (Soru İşaretleri)": "#3B82F6",
+            "💰 Cash Cows (Nakit İnekleri)": "#60A5FA",
+            "🐕 Dogs (Düşük Öncelik)": "#93C5FD"
         }
         
         # Nokta boyutları
@@ -1108,16 +1108,16 @@ if len(investment_df_original) > 0:
         
         annotations = [
             dict(x=pazar_median + (max_x - pazar_median) * 0.5, y=pay_median + (max_y - pay_median) * 0.5,
-                 text="⭐<br>YILDIZLAR", showarrow=False,
+                 text="⭐<br>STARS", showarrow=False,
                  font=dict(size=18, color="rgba(30,64,175,0.3)", family="Arial Black")),
             dict(x=pazar_median + (max_x - pazar_median) * 0.5, y=pay_median * 0.5,
-                 text="❓<br>SORU İŞARETLERİ", showarrow=False,
-                 font=dict(size=18, color="rgba(59,130,246,0.3)", family="Arial Black")),
+                 text="❓<br>QUESTION<br>MARKS", showarrow=False,
+                 font=dict(size=16, color="rgba(59,130,246,0.3)", family="Arial Black")),
             dict(x=pazar_median * 0.5, y=pay_median + (max_y - pay_median) * 0.5,
-                 text="💰<br>NAKİT İNEKLERİ", showarrow=False,
-                 font=dict(size=18, color="rgba(96,165,250,0.3)", family="Arial Black")),
+                 text="💰<br>CASH<br>COWS", showarrow=False,
+                 font=dict(size=16, color="rgba(96,165,250,0.3)", family="Arial Black")),
             dict(x=pazar_median * 0.5, y=pay_median * 0.5,
-                 text="🐕<br>KÖPEKLER", showarrow=False,
+                 text="🐕<br>DOGS", showarrow=False,
                  font=dict(size=18, color="rgba(147,197,253,0.3)", family="Arial Black"))
         ]
         
@@ -1149,31 +1149,35 @@ if len(investment_df_original) > 0:
         bcg_stats.columns = ['Kategori', 'Şehir Sayısı', 'Toplam PF', 'Ort. Pay']
         
         st.success("""
-        **⭐ YILDIZLAR**  
+        **⭐ STARS (Yıldızlar)**  
         Büyük pazar + Yüksek pay  
         → Lider pozisyonlar  
-        → Büyümeye devam et
+        → Büyümeye devam et  
+        → Yatırım yap, koru, genişlet
         """)
         
         st.info("""
-        **❓ SORU İŞARETLERİ**  
+        **❓ QUESTION MARKS (Soru İşaretleri)**  
         Büyük pazar + Düşük pay  
         → En yüksek fırsatlar!  
-        → Agresif yatırım
+        → Agresif yatırım gerekli  
+        → Star olmak için çabala
         """)
         
         st.warning("""
-        **💰 NAKİT İNEKLERİ**  
+        **💰 CASH COWS (Nakit İnekleri)**  
         Küçük pazar + Yüksek pay  
-        → Stabil gelir  
-        → Minimal yatırım
+        → Stabil gelir kaynağı  
+        → Minimal yatırım  
+        → Kazancı başka alanlara aktar
         """)
         
         st.error("""
-        **🐕 KÖPEKLER**  
+        **🐕 DOGS (Düşük Öncelik)**  
         Küçük pazar + Düşük pay  
         → Düşük öncelik  
-        → İzleme modu
+        → Minimal kaynak  
+        → İzleme modu veya çıkış
         """)
         
         st.markdown("---")
