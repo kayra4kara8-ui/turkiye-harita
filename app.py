@@ -2090,15 +2090,6 @@ with col_mc2:
 st.markdown("---")
 
 
-
-
-
-
-
-
-
-
-
 # ============================================================================
 # YENİ ÖZELLİK 5: AKSİYON PLANI OLUŞTURUCU
 # ============================================================================
@@ -2445,6 +2436,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
