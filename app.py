@@ -1244,6 +1244,7 @@ with col_dist4:
         )
 
 st.markdown("---")
+
     # 4. ÇOK BOYUTLU ŞEHİR ANALİZİ - PROFESYONEL
     st.markdown("#### 🔗 Çok Boyutlu Şehir Analizi (Top 30)")
     st.caption("📊 Üç boyutlu metrik analizi: PF Kutu, Pazar Büyüklüğü ve Pazar Payı")
@@ -2356,6 +2357,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
