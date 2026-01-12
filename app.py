@@ -1173,7 +1173,7 @@ if len(investment_df_original) > 0:
         """)
     
     # BCG Dağılımı - Grafiğin Altında
-# BCG Dağılımı - Grafiğin Altında
+    # BCG Dağılımı - Grafiğin Altında
     st.markdown("---")
     st.markdown("##### 📊 BCG Kadran Dağılımı")
     st.caption("Her kadranda kaç şehir var ve toplam PF Kutu hacmi ne kadar?")
@@ -1197,9 +1197,9 @@ if len(investment_df_original) > 0:
             st.metric(
                 label="⭐ Stars",
                 value=f"{int(row['Şehir Sayısı'])} şehir",
-                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
+                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu"
             )
+            st.markdown(f"<small style='color: gray;'>Pazar: {row['Toplam Pazar']:,.0f}</small>", unsafe_allow_html=True)
     
     with col_dist2:
         if "❓ Question Marks (Soru İşaretleri)" in bcg_dict:
@@ -1207,9 +1207,9 @@ if len(investment_df_original) > 0:
             st.metric(
                 label="❓ Question Marks",
                 value=f"{int(row['Şehir Sayısı'])} şehir",
-                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
+                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu"
             )
+            st.markdown(f"<small style='color: gray;'>Pazar: {row['Toplam Pazar']:,.0f}</small>", unsafe_allow_html=True)
     
     with col_dist3:
         if "💰 Cash Cows (Nakit İnekleri)" in bcg_dict:
@@ -1217,9 +1217,9 @@ if len(investment_df_original) > 0:
             st.metric(
                 label="💰 Cash Cows",
                 value=f"{int(row['Şehir Sayısı'])} şehir",
-                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
+                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu"
             )
+            st.markdown(f"<small style='color: gray;'>Pazar: {row['Toplam Pazar']:,.0f}</small>", unsafe_allow_html=True)
     
     with col_dist4:
         if "🐕 Dogs (Düşük Öncelik)" in bcg_dict:
@@ -1228,9 +1228,9 @@ if len(investment_df_original) > 0:
                 label="🐕 Dogs",
                 value=f"{int(row['Şehir Sayısı'])} şehir",
                 delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                delta_color="off",
-                help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
+                delta_color="off"
             )
+            st.markdown(f"<small style='color: gray;'>Pazar: {row['Toplam Pazar']:,.0f}</small>", unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -2346,6 +2346,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
