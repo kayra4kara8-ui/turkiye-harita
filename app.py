@@ -2011,7 +2011,7 @@ import numpy as np
 # 2. MONTE CARLO SİMÜLASYONU
 # =============================================================================
 st.markdown("#### 🎲 Monte Carlo Risk & Fırsat Simülasyonu")
-st.caption("🔮 Gelecek dönem satış tahminleri - 1000 senaryo simülasyonu")
+st.caption("🔮 Gelecek dönem satış tahminleri 1000 senaryo simülasyonu")
 
 col_mc1, col_mc2 = st.columns([2, 1])
 
@@ -2436,6 +2436,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
