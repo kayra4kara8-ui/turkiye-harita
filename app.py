@@ -1173,6 +1173,7 @@ if len(investment_df_original) > 0:
         """)
     
     # BCG Dağılımı - Grafiğin Altında
+# BCG Dağılımı - Grafiğin Altında
     st.markdown("---")
     st.markdown("##### 📊 BCG Kadran Dağılımı")
     st.caption("Her kadranda kaç şehir var ve toplam PF Kutu hacmi ne kadar?")
@@ -1183,9 +1184,10 @@ if len(investment_df_original) > 0:
     bcg_stats = scatter_df.groupby('BCG Kategori').agg({
         'Şehir': 'count',
         'PF Kutu': 'sum',
+        'Toplam Kutu': 'sum',
         'Pazar Payı %': 'mean'
     }).reset_index()
-    bcg_stats.columns = ['Kategori', 'Şehir Sayısı', 'Toplam PF Kutu', 'Ort. Pay']
+    bcg_stats.columns = ['Kategori', 'Şehir Sayısı', 'Toplam PF Kutu', 'Toplam Pazar', 'Ort. Pay']
     
     bcg_dict = bcg_stats.set_index('Kategori').to_dict('index')
     
@@ -1196,7 +1198,7 @@ if len(investment_df_original) > 0:
                 label="⭐ Stars",
                 value=f"{int(row['Şehir Sayısı'])} şehir",
                 delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                help="Bu kadranda toplam PF Kutu hacmi"
+                help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
             )
     
     with col_dist2:
@@ -1206,7 +1208,7 @@ if len(investment_df_original) > 0:
                 label="❓ Question Marks",
                 value=f"{int(row['Şehir Sayısı'])} şehir",
                 delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                help="Bu kadranda toplam PF Kutu hacmi"
+                help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
             )
     
     with col_dist3:
@@ -1216,7 +1218,7 @@ if len(investment_df_original) > 0:
                 label="💰 Cash Cows",
                 value=f"{int(row['Şehir Sayısı'])} şehir",
                 delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                help="Bu kadranda toplam PF Kutu hacmi"
+                help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
             )
     
     with col_dist4:
@@ -1227,7 +1229,7 @@ if len(investment_df_original) > 0:
                 value=f"{int(row['Şehir Sayısı'])} şehir",
                 delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
                 delta_color="off",
-                help="Bu kadranda toplam PF Kutu hacmi"
+                help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
             )
     
     st.markdown("---")
@@ -2344,6 +2346,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
