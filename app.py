@@ -2776,23 +2776,31 @@ with col_exp3:
                 progress_bar.progress(90)
                 status_text.text("📋 Öneriler hazırlanıyor...")
                 
-                # 7. ÖNERİLER VE SONUÇ
-                elements.append(Paragraph("7. ÖNERİLER VE AKSİYON PLANI", heading_style))
-                
-                oneriler_text = f"""
-                <para alignment="justify" spaceBefore="10" spaceAfter="10">
-                <b>1. Öncelikli Aksiyonlar:</b><br/>
-                • <b>Agresif Yatırım:</b> {strategy_counts.get('🚀 Agresif', 0)} şehire odaklanılmalı - 
-                büyük pazarlarda düşük payımız var, en yüksek ROI potansiyeli bu şehirlerde<br/>
-                • <b>Hızlandırılmış Büyüme:</b> {strategy_counts.get('⚡ Hızlandırılmış', 0)} şehirde momentum yakalanmış, 
-                liderliğe geçiş için hızlandırılmış yatırım yapılmalı<br/>
-                • <b>Büyük Fırsatlar:</b> {len(firsatlar_df) if 'firsatlar_df' in locals() else 0} şehirde kritik fırsat mevcut, 
-                özel kampanyalar ve promosyonlar düzenlenmeli<br/>
-                <br/>
-                <b>2. Pazar Payı Artışı Hedefleri:</b><br/>
-                • <b>Mevcut Durum:</b> %{genel_pazar_payi:.1f} genel pazar payı<br/>
-                • <b>Kısa Vadeli Hedef (3 ay):</b> %{genel_pazar_payi * 1.1:.1f} seviyesine çıkmak (+%{(genel_pazar_payi * 0.1):.1f})<br/>
-                • <b>Orta Vadeli Hedef (6 ay):</b> %{genel_pazar_payi * 1.2:.1f}st.sidebar.header("🔍 Filtre")
+              # 7. ÖNERİLER VE SONUÇ
+            elements.append(Paragraph("7. ÖNERİLER VE AKSİYON PLANI", heading_style))
+
+            oneriler_text = f"""
+            <para alignment="justify" spaceBefore="10" spaceAfter="10">
+            <b>1. Öncelikli Aksiyonlar:</b><br/>
+            • <b>Agresif Yatırım:</b> {strategy_counts.get('🚀 Agresif', 0)} şehire odaklanılmalı – 
+büyük pazarlarda düşük payımız var, en yüksek ROI potansiyeli bu şehirlerde<br/>
+• <b>Hızlandırılmış Büyüme:</b> {strategy_counts.get('⚡ Hızlandırılmış', 0)} şehirde momentum yakalanmış, 
+liderliğe geçiş için hızlandırılmış yatırım yapılmalı<br/>
+• <b>Büyük Fırsatlar:</b> {len(firsatlar_df) if 'firsatlar_df' in locals() else 0} şehirde kritik fırsat mevcut, 
+özel kampanyalar ve promosyonlar düzenlenmeli<br/><br/>
+
+<b>2. Pazar Payı Artışı Hedefleri:</b><br/>
+• <b>Mevcut Durum:</b> %{genel_pazar_payi:.1f}<br/>
+• <b>Kısa Vadeli Hedef (3 ay):</b> %{genel_pazar_payi * 1.1:.1f}<br/>
+• <b>Orta Vadeli Hedef (6 ay):</b> %{genel_pazar_payi * 1.2:.1f}
+</para>
+"""
+
+elements.append(Paragraph(oneriler_text, styles['Normal']))
+elements.append(PageBreak())
+
+
+st.sidebar.header("🔍 Filtre")
 
 # Görünüm modu
 view_mode = st.sidebar.radio(
@@ -2816,7 +2824,6 @@ selected_bolge = st.sidebar.selectbox("Bölge Seçin", bolge_list)
 strateji_list = ["Tümü", "🚀 Agresif", "⚡ Hızlandırılmış", "🛡️ Koruma", "💎 Potansiyel", "👁️ İzleme"]
 selected_strateji = st.sidebar.selectbox("Yatırım Stratejisi", strateji_list)
 
-# YENİ: Sayısal Filtreler
 st.sidebar.markdown("---")
 st.sidebar.header("📊 Sayısal Filtreler")
 
@@ -2844,10 +2851,11 @@ with st.sidebar.expander("📦 PF Kutu"):
         step=5000
     )
 
-# YENİ: Akıllı Arama
 st.sidebar.markdown("---")
 st.sidebar.header("🔍 Akıllı Arama")
 arama_text = st.sidebar.text_input("Şehir/Bölge/Müdür Ara", placeholder="Örn: İstanbul")
+
+
 
 
 
