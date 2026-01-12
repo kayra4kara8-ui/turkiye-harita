@@ -1179,6 +1179,12 @@ if len(investment_df_original) > 0:
 
 # Mevcut BCG Dağılımı kodunu bul ve bu versiyonla değiştir:
 
+# ============================================================================
+# BCG KADRAN DAĞILIMI - KOMPAKT VERSİYON (Düzeni Bozmayan)
+# ============================================================================
+
+# Mevcut BCG kodu yerine bunu kullan:
+
 st.markdown("---")
 st.markdown("##### 📊 BCG Kadran Dağılımı")
 st.caption("Her kadranda kaç şehir var ve toplam PF Kutu hacmi ne kadar?")
@@ -1203,10 +1209,8 @@ with col_dist1:
             label="⭐ Stars",
             value=f"{int(row['Şehir Sayısı'])} şehir",
             delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-            help="Bu kadranda toplam PF Kutu hacmi"
+            help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
         )
-        # YENİ: Toplam Pazar
-        st.caption(f"📦 Toplam Pazar: **{row['Toplam Pazar']:,.0f}**")
 
 with col_dist2:
     if "❓ Question Marks (Soru İşaretleri)" in bcg_dict:
@@ -1215,10 +1219,8 @@ with col_dist2:
             label="❓ Question Marks",
             value=f"{int(row['Şehir Sayısı'])} şehir",
             delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-            help="Bu kadranda toplam PF Kutu hacmi"
+            help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
         )
-        # YENİ: Toplam Pazar
-        st.caption(f"📦 Toplam Pazar: **{row['Toplam Pazar']:,.0f}**")
 
 with col_dist3:
     if "💰 Cash Cows (Nakit İnekleri)" in bcg_dict:
@@ -1227,10 +1229,8 @@ with col_dist3:
             label="💰 Cash Cows",
             value=f"{int(row['Şehir Sayısı'])} şehir",
             delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-            help="Bu kadranda toplam PF Kutu hacmi"
+            help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
         )
-        # YENİ: Toplam Pazar
-        st.caption(f"📦 Toplam Pazar: **{row['Toplam Pazar']:,.0f}**")
 
 with col_dist4:
     if "🐕 Dogs (Düşük Öncelik)" in bcg_dict:
@@ -1240,13 +1240,10 @@ with col_dist4:
             value=f"{int(row['Şehir Sayısı'])} şehir",
             delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
             delta_color="off",
-            help="Bu kadranda toplam PF Kutu hacmi"
+            help=f"PF Kutu: {row['Toplam PF Kutu']:,.0f} | Toplam Pazar: {row['Toplam Pazar']:,.0f}"
         )
-        # YENİ: Toplam Pazar
-        st.caption(f"📦 Toplam Pazar: **{row['Toplam Pazar']:,.0f}**")
-    
-    st.markdown("---")
-    
+
+st.markdown("---")
     # 4. ÇOK BOYUTLU ŞEHİR ANALİZİ - PROFESYONEL
     st.markdown("#### 🔗 Çok Boyutlu Şehir Analizi (Top 30)")
     st.caption("📊 Üç boyutlu metrik analizi: PF Kutu, Pazar Büyüklüğü ve Pazar Payı")
@@ -2359,6 +2356,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
