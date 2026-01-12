@@ -1172,65 +1172,126 @@ if len(investment_df_original) > 0:
         → İzleme modu veya çıkış
         """)
     
-    # BCG Dağılımı - Grafiğin Altında
-    st.markdown("---")
-    st.markdown("##### 📊 BCG Kadran Dağılımı")
-    st.caption("Her kadranda kaç şehir var ve toplam PF Kutu hacmi ne kadar?")
-    
-    # 4 kolon yan yana
-    col_dist1, col_dist2, col_dist3, col_dist4 = st.columns(4)
-    
-    bcg_stats = scatter_df.groupby('BCG Kategori').agg({
-        'Şehir': 'count',
-        'PF Kutu': 'sum',
-        'Pazar Payı %': 'mean'
-    }).reset_index()
-    bcg_stats.columns = ['Kategori', 'Şehir Sayısı', 'Toplam PF Kutu', 'Ort. Pay']
-    
-    bcg_dict = bcg_stats.set_index('Kategori').to_dict('index')
-    
-    with col_dist1:
-        if "⭐ Stars (Yıldızlar)" in bcg_dict:
-            row = bcg_dict["⭐ Stars (Yıldızlar)"]
-            st.metric(
-                label="⭐ Stars",
-                value=f"{int(row['Şehir Sayısı'])} şehir",
-                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                help="Bu kadranda toplam PF Kutu hacmi"
-            )
-    
-    with col_dist2:
-        if "❓ Question Marks (Soru İşaretleri)" in bcg_dict:
-            row = bcg_dict["❓ Question Marks (Soru İşaretleri)"]
-            st.metric(
-                label="❓ Question Marks",
-                value=f"{int(row['Şehir Sayısı'])} şehir",
-                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                help="Bu kadranda toplam PF Kutu hacmi"
-            )
-    
-    with col_dist3:
-        if "💰 Cash Cows (Nakit İnekleri)" in bcg_dict:
-            row = bcg_dict["💰 Cash Cows (Nakit İnekleri)"]
-            st.metric(
-                label="💰 Cash Cows",
-                value=f"{int(row['Şehir Sayısı'])} şehir",
-                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                help="Bu kadranda toplam PF Kutu hacmi"
-            )
-    
-    with col_dist4:
-        if "🐕 Dogs (Düşük Öncelik)" in bcg_dict:
-            row = bcg_dict["🐕 Dogs (Düşük Öncelik)"]
-            st.metric(
-                label="🐕 Dogs",
-                value=f"{int(row['Şehir Sayısı'])} şehir",
-                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-                delta_color="off",
-                help="Bu kadranda toplam PF Kutu hacmi"
-            )
-    
-    st.markdown("---")
+   # ============================================================================
+# İYİLEŞTİRİLMİŞ BCG KADRAN DAĞILIMI
+# ============================================================================
+
+# Mevcut kod bloğunu bul ve değiştir:
+# BCG Dağılımı - Grafiğin Altında kısmını şununla değiştir:
+
+st.markdown("---")
+st.markdown("##### 📊 BCG Kadran Dağılımı")
+st.caption("Her kadranda kaç şehir var ve toplam PF Kutu hacmi ne kadar?")
+
+# 4 kolon yan yana
+col_dist1, col_dist2, col_dist3, col_dist4 = st.columns(4)
+
+bcg_stats = scatter_df.groupby('BCG Kategori').agg({
+    'Şehir': 'count',
+    'PF Kutu': 'sum',
+    'Toplam Kutu': 'sum',
+    'Pazar Payı %': 'mean'
+}).reset_index()
+bcg_stats.columns = ['Kategori', 'Şehir Sayısı', 'Toplam PF Kutu', 'Toplam Pazar', 'Ort. Pay']
+
+bcg_dict = bcg_stats.set_index('Kategori').to_dict('index')
+
+# STARS
+with col_dist1:
+    if "⭐ Stars (Yıldızlar)" in bcg_dict:
+        row = bcg_dict["⭐ Stars (Yıldızlar)"]
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, #1E40AF 0%, #1E3A8A 100%);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(30,64,175,0.3);
+        ">
+            <h3 style="margin: 0 0 10px 0; font-size: 1.5rem;">⭐ Stars</h3>
+            <p style="margin: 5px 0; font-size: 1.1rem; opacity: 0.9;">{int(row['Şehir Sayısı'])} şehir</p>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.3); margin: 15px 0;">
+            <p style="margin: 5px 0; font-size: 0.95rem;"><b>📦 PF Kutu:</b></p>
+            <p style="margin: 0 0 10px 0; font-size: 1.3rem; font-weight: bold;">{row['Toplam PF Kutu']:,.0f}</p>
+            <p style="margin: 5px 0; font-size: 0.95rem;"><b>🏪 Toplam Pazar:</b></p>
+            <p style="margin: 0; font-size: 1.1rem; font-weight: bold;">{row['Toplam Pazar']:,.0f}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Help icon ile açıklama
+        st.caption("💡 Büyük pazar + Yüksek pay")
+
+# QUESTION MARKS
+with col_dist2:
+    if "❓ Question Marks (Soru İşaretleri)" in bcg_dict:
+        row = bcg_dict["❓ Question Marks (Soru İşaretleri)"]
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+        ">
+            <h3 style="margin: 0 0 10px 0; font-size: 1.5rem;">❓ Question Marks</h3>
+            <p style="margin: 5px 0; font-size: 1.1rem; opacity: 0.9;">{int(row['Şehir Sayısı'])} şehir</p>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.3); margin: 15px 0;">
+            <p style="margin: 5px 0; font-size: 0.95rem;"><b>📦 PF Kutu:</b></p>
+            <p style="margin: 0 0 10px 0; font-size: 1.3rem; font-weight: bold;">{row['Toplam PF Kutu']:,.0f}</p>
+            <p style="margin: 5px 0; font-size: 0.95rem;"><b>🏪 Toplam Pazar:</b></p>
+            <p style="margin: 0; font-size: 1.1rem; font-weight: bold;">{row['Toplam Pazar']:,.0f}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.caption("🎯 En büyük fırsatlar!")
+
+# CASH COWS
+with col_dist3:
+    if "💰 Cash Cows (Nakit İnekleri)" in bcg_dict:
+        row = bcg_dict["💰 Cash Cows (Nakit İnekleri)"]
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(96,165,250,0.3);
+        ">
+            <h3 style="margin: 0 0 10px 0; font-size: 1.5rem;">💰 Cash Cows</h3>
+            <p style="margin: 5px 0; font-size: 1.1rem; opacity: 0.9;">{int(row['Şehir Sayısı'])} şehir</p>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.3); margin: 15px 0;">
+            <p style="margin: 5px 0; font-size: 0.95rem;"><b>📦 PF Kutu:</b></p>
+            <p style="margin: 0 0 10px 0; font-size: 1.3rem; font-weight: bold;">{row['Toplam PF Kutu']:,.0f}</p>
+            <p style="margin: 5px 0; font-size: 0.95rem;"><b>🏪 Toplam Pazar:</b></p>
+            <p style="margin: 0; font-size: 1.1rem; font-weight: bold;">{row['Toplam Pazar']:,.0f}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.caption("💵 Stabil gelir kaynağı")
+
+# DOGS
+with col_dist4:
+    if "🐕 Dogs (Düşük Öncelik)" in bcg_dict:
+        row = bcg_dict["🐕 Dogs (Düşük Öncelik)"]
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, #93C5FD 0%, #60A5FA 100%);
+            padding: 20px;
+            border-radius: 12px;
+            color: white;
+            box-shadow: 0 4px 12px rgba(147,197,253,0.3);
+        ">
+            <h3 style="margin: 0 0 10px 0; font-size: 1.5rem;">🐕 Dogs</h3>
+            <p style="margin: 5px 0; font-size: 1.1rem; opacity: 0.9;">{int(row['Şehir Sayısı'])} şehir</p>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.3); margin: 15px 0;">
+            <p style="margin: 5px 0; font-size: 0.95rem;"><b>📦 PF Kutu:</b></p>
+            <p style="margin: 0 0 10px 0; font-size: 1.3rem; font-weight: bold;">{row['Toplam PF Kutu']:,.0f}</p>
+            <p style="margin: 5px 0; font-size: 0.95rem;"><b>🏪 Toplam Pazar:</b></p>
+            <p style="margin: 0; font-size: 1.1rem; font-weight: bold;">{row['Toplam Pazar']:,.0f}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.caption("👁️ Düşük öncelik")
     
     # 4. ÇOK BOYUTLU ŞEHİR ANALİZİ - PROFESYONEL
     st.markdown("#### 🔗 Çok Boyutlu Şehir Analizi (Top 30)")
@@ -2344,6 +2405,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
