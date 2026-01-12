@@ -1172,13 +1172,6 @@ if len(investment_df_original) > 0:
         → İzleme modu veya çıkış
         """)
     
-    # BCG Dağılımı - Grafiğin Altında
-# ============================================================================
-# BCG KADRAN DAĞILIMI - SADECE TOPLAM PAZAR EKLENMİŞ VERSİYON
-# ============================================================================
-
-# Mevcut BCG Dağılımı kodunu bul ve bu versiyonla değiştir:
-
 # ============================================================================
 # BCG KADRAN DAĞILIMI - KOMPAKT VERSİYON (Düzeni Bozmayan)
 # ============================================================================
@@ -2357,6 +2350,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
