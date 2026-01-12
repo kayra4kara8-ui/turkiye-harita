@@ -2448,8 +2448,45 @@ with col_mc2:
 
 st.markdown("---")
 
+# =============================================================================
+# 3. KORELASYON MATRİSİ
+# =============================================================================
+st.markdown("#### 🔗 Metrik Korelasyon Analizi")
+st.caption("📊 Hangi metrikler birbirine bağımlı?")
+
+corr_df = investment_df_original[['PF Kutu', 'Toplam Kutu', 'Pazar Payı %', 'Büyüme Alanı']].copy()
+corr_matrix = corr_df.corr()
+
+fig_corr = px.imshow(
+    corr_matrix,
+    labels=dict(color="Korelasyon"),
+    x=corr_matrix.columns,
+    y=corr_matrix.columns,
+    color_continuous_scale='RdBu',
+    zmin=-1, zmax=1,
+    text_auto='.2f',
+    aspect="auto"
+)
+
+fig_corr.update_layout(
+    height=500,
+    paper_bgcolor='rgba(0,0,0,0)',
+    font=dict(color='white', size=11)
+)
+
+st.plotly_chart(fig_corr, use_container_width=True)
+
+st.info("""
+**📖 Korelasyon Yorumu:**
+- **+1.00**: Mükemmel pozitif ilişki
+- **0.00**: İlişki yok
+- **-1.00**: Mükemmel negatif ilişki
+""")
+
+st.markdown("---")
     
    
+
 
 
 
