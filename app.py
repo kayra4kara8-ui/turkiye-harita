@@ -2346,7 +2346,6 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
-
 with col_exp3:
     if len(investment_df_original) > 0:
         st.markdown("##### 📄 TAM PDF RAPORU")
@@ -2849,9 +2848,6 @@ with st.sidebar.expander("📦 PF Kutu"):
 st.sidebar.markdown("---")
 st.sidebar.header("🔍 Akıllı Arama")
 arama_text = st.sidebar.text_input("Şehir/Bölge/Müdür Ara", placeholder="Örn: İstanbul")
-
-
-
 
 
 
