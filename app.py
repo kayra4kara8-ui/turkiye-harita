@@ -527,6 +527,110 @@ filtered_aktif_sehir = (filtered_data["PF Kutu"] > 0).sum()
 fig = create_figure(filtered_data, selected_manager, view_mode, filtered_pf_toplam, filtered_toplam_pazar)
 st.plotly_chart(fig, use_container_width=True)
 
+# ============================================================================
+# EXECUTIVE SUMMARY - YÖNETICI ÖZETI
+# ============================================================================
+# NEREYE EKLENECEK: Haritadan HEMEN SONRA, "Genel İstatistikler"den ÖNCE
+# Yani şu satırdan hemen önce:
+#     col1, col2, col3, col4 = st.columns(4)
+#     with col1:
+#         st.metric("📦 PF Toplam Kutu", f"{filtered_pf_toplam:,.0f}")
+# ============================================================================
+
+# EXECUTIVE SUMMARY BAŞLANGIÇ
+st.markdown("---")
+st.markdown("## 📊 Executive Summary")
+st.caption("Yönetici özeti - En kritik 5 metrik")
+
+if len(investment_df_original) > 0:
+    col_ex1, col_ex2, col_ex3, col_ex4, col_ex5 = st.columns(5)
+    
+    with col_ex1:
+        # Revenue Concentration Index (Top 10 Konsantrasyonu)
+        top10_pf = investment_df_original.nlargest(10, 'PF Kutu')['PF Kutu'].sum()
+        top10_concentration = (top10_pf / filtered_pf_toplam * 100) if filtered_pf_toplam > 0 else 0
+        
+        # Renk belirleme (Yüksek konsantrasyon = risk = kırmızı)
+        if top10_concentration > 80:
+            delta_color = "inverse"  # Kırmızı
+        elif top10_concentration > 60:
+            delta_color = "off"  # Gri
+        else:
+            delta_color = "normal"  # Yeşil
+        
+        st.metric(
+            "📈 Konsantrasyon",
+            f"%{top10_concentration:.0f}",
+            delta="Top 10 şehir",
+            delta_color=delta_color,
+            help="Top 10 şehrin toplam satıştaki payı. Yüksek = Risk!"
+        )
+    
+    with col_ex2:
+        # Market Coverage (Pazar Kapsamı)
+        coverage = (filtered_aktif_sehir / 81 * 100)
+        
+        st.metric(
+            "🗺️ Pazar Kapsamı",
+            f"%{coverage:.0f}",
+            delta=f"{filtered_aktif_sehir}/81 şehir",
+            help="Kaç şehirde aktif satışımız var"
+        )
+    
+    with col_ex3:
+        # Critical Opportunities (Kritik Fırsatlar)
+        # firsatlar_df değişkeni daha sonra tanımlanıyor, o yüzden şimdilik hesaplayalım
+        median_pazar = investment_df_original['Toplam Kutu'].median()
+        temp_firsatlar = investment_df_original[
+            (investment_df_original['Toplam Kutu'] > median_pazar) &
+            (investment_df_original['Pazar Payı %'] < 10)
+        ]
+        kritik_firsatlar = len(temp_firsatlar)
+        
+        st.metric(
+            "💎 Büyük Fırsatlar",
+            f"{kritik_firsatlar}",
+            delta="Büyük pazar, düşük pay",
+            delta_color="normal" if kritik_firsatlar > 0 else "off",
+            help="Büyük pazar + Düşük payımız = Yüksek ROI potansiyeli"
+        )
+    
+    with col_ex4:
+        # Zero Sales Cities (Sıfır Satış Şehirler)
+        sifir_count = len(investment_df_original[investment_df_original['PF Kutu'] == 0])
+        
+        st.metric(
+            "⚠️ Sıfır Satış",
+            f"{sifir_count}",
+            delta="şehir",
+            delta_color="inverse" if sifir_count > 0 else "normal",
+            help="Hiç satış olmayan şehir sayısı"
+        )
+    
+    with col_ex5:
+        # Strategic Focus (Stratejik Odak)
+        high_priority = len(investment_df_original[
+            investment_df_original['Yatırım Stratejisi'].isin(['🚀 Agresif', '⚡ Hızlandırılmış'])
+        ])
+        
+        st.metric(
+            "🎯 Yüksek Öncelik",
+            f"{high_priority}",
+            delta="şehir",
+            help="Agresif veya Hızlandırılmış strateji gerektiren şehir sayısı"
+        )
+
+st.markdown("---")
+
+# EXECUTIVE SUMMARY BİTİŞ
+# Buradan sonra mevcut "Genel İstatistikler" devam eder
+
+
+
+
+
+
+
 # Genel İstatistikler - FİLTRELENMİŞ veriye göre
 col1, col2, col3, col4 = st.columns(4)
 with col1:
@@ -2346,6 +2450,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
