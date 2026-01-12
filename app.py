@@ -2364,84 +2364,8 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
 # GÖRSELLEŞTİRMELER - TEMİZLENMİŞ + YENİ ANALİZLER
 # =============================================================================
 import plotly.express as px
+import numpy as np
 
-st.markdown("---")
-st.subheader("📊 Görsel Analizler & Gelişmiş Tahminler")
-
-if len(investment_df_original) > 0:
-    
-    # 1. PARETO ANALİZİ - 80/20 KURALI
-    st.markdown("#### 📈 Pareto Analizi (80/20 Kuralı)")
-    st.caption("💡 Hangi şehirler toplam satışın %80'ini oluşturuyor?")
-    
-    pareto_df = investment_df_original.sort_values('PF Kutu', ascending=False).reset_index(drop=True)
-    pareto_df['Kümülatif PF'] = pareto_df['PF Kutu'].cumsum()
-    total_pf = pareto_df['PF Kutu'].sum()
-    pareto_df['Kümülatif %'] = (pareto_df['Kümülatif PF'] / total_pf * 100).round(1)
-    
-    threshold_80 = pareto_df[pareto_df['Kümülatif %'] <= 80]
-    vital_few_count = len(threshold_80)
-    vital_few_contribution = threshold_80['PF Kutu'].sum()
-    
-    col_pareto1, col_pareto2 = st.columns([3, 1])
-    
-    with col_pareto1:
-        fig_pareto = go.Figure()
-        
-        fig_pareto.add_trace(go.Bar(
-            x=pareto_df.head(30)['Şehir'],
-            y=pareto_df.head(30)['PF Kutu'],
-            name='PF Kutu',
-            marker_color='#3B82F6',
-            yaxis='y'
-        ))
-        
-        fig_pareto.add_trace(go.Scatter(
-            x=pareto_df.head(30)['Şehir'],
-            y=pareto_df.head(30)['Kümülatif %'],
-            name='Kümülatif %',
-            marker_color='#EF4444',
-            line=dict(width=3),
-            yaxis='y2'
-        ))
-        
-        fig_pareto.add_hline(y=80, line_dash="dash", line_color="rgba(239,68,68,0.5)", 
-                            annotation_text="80% Hedef", annotation_position="right",
-                            yref='y2')
-        
-        fig_pareto.update_layout(
-            height=500,
-            plot_bgcolor='#0f172a',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='white', size=10),
-            xaxis=dict(title='Şehir', tickangle=-45, showgrid=False),
-            yaxis=dict(title='PF Kutu', showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
-            yaxis2=dict(title='Kümülatif %', overlaying='y', side='right', showgrid=False, range=[0, 100]),
-            legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='right', x=1)
-        )
-        
-        st.plotly_chart(fig_pareto, use_container_width=True)
-    
-    with col_pareto2:
-        st.markdown("##### 📊 Pareto İstatistikleri")
-        st.metric("🎯 Vital Few", f"{vital_few_count} şehir", 
-                 help="Satışın %80'ini oluşturan şehir sayısı")
-        st.metric("💰 Katkıları", f"{vital_few_contribution:,.0f}", 
-                 help="Bu şehirlerin toplam PF Kutu katkısı")
-        
-        vital_few_percent = (vital_few_count / len(pareto_df) * 100)
-        st.metric("📉 Toplam İçinde", f"%{vital_few_percent:.1f}", 
-                 help="Tüm şehirler içindeki oranı")
-        
-        st.success(f"""
-        **80/20 Kuralı Bulgusu:**  
-        Toplam {len(pareto_df)} şehirden sadece **{vital_few_count} şehir** (%{vital_few_percent:.0f}) satışların **%80'ini** oluşturuyor.
-        
-        → **Bu şehirlere odaklan!**
-        """)
-    
-    st.markdown("---")
-    
     # 2. MONTE CARLO SİMÜLASYONU
     st.markdown("#### 🎲 Monte Carlo Risk & Fırsat Simülasyonu")
     st.caption("🔮 Gelecek dönem satış tahminleri - 1000 senaryo simülasyonu")
@@ -2799,6 +2723,7 @@ with col_exp1:
 
 with col_exp2:
     st.info("💡 PDF export özelliği yakında eklenecek!")
+
 
 
 
