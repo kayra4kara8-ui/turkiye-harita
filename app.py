@@ -2347,6 +2347,508 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 help="Genel özet ve top performansları içeren rapor"
             )
 
+with col_exp3:
+    if len(investment_df_original) > 0:
+        st.markdown("##### 📄 TAM PDF RAPORU")
+        st.caption("Tüm grafikler ve analizlerle kapsamlı rapor")
+        
+        # PDF butonu
+        if st.button("🎨 PDF Raporu Oluştur", type="primary"):
+            try:
+                from reportlab.lib.pagesizes import A4, landscape
+                from reportlab.lib import colors
+                from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+                from reportlab.platypus import (SimpleDocTemplate, Table, TableStyle, 
+                                               Paragraph, Spacer, PageBreak, Image, KeepTogether)
+                from reportlab.lib.units import cm
+                from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+                from reportlab.graphics.shapes import Drawing
+                from reportlab.graphics.charts.barcharts import VerticalBarChart
+                from reportlab.graphics.charts.piecharts import Pie
+                
+                import tempfile
+                import base64
+                
+                # Progress bar
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                status_text.text("📄 PDF oluşturuluyor...")
+                progress_bar.progress(10)
+                
+                # PDF buffer
+                buffer_full_pdf = BytesIO()
+                doc = SimpleDocTemplate(
+                    buffer_full_pdf,
+                    pagesize=A4,
+                    rightMargin=1.5*cm,
+                    leftMargin=1.5*cm,
+                    topMargin=2*cm,
+                    bottomMargin=2*cm
+                )
+                
+                elements = []
+                styles = getSampleStyleSheet()
+                
+                # Özel stiller
+                title_style = ParagraphStyle(
+                    'CustomTitle',
+                    parent=styles['Heading1'],
+                    fontSize=28,
+                    textColor=colors.HexColor('#1E40AF'),
+                    spaceAfter=30,
+                    alignment=TA_CENTER,
+                    fontName='Helvetica-Bold'
+                )
+                
+                subtitle_style = ParagraphStyle(
+                    'Subtitle',
+                    parent=styles['Normal'],
+                    fontSize=14,
+                    textColor=colors.HexColor('#64748B'),
+                    spaceAfter=20,
+                    alignment=TA_CENTER
+                )
+                
+                heading_style = ParagraphStyle(
+                    'CustomHeading',
+                    parent=styles['Heading2'],
+                    fontSize=18,
+                    textColor=colors.HexColor('#3B82F6'),
+                    spaceAfter=15,
+                    spaceBefore=20,
+                    fontName='Helvetica-Bold'
+                )
+                
+                subheading_style = ParagraphStyle(
+                    'SubHeading',
+                    parent=styles['Heading3'],
+                    fontSize=14,
+                    textColor=colors.HexColor('#0EA5E9'),
+                    spaceAfter=10,
+                    spaceBefore=10,
+                    fontName='Helvetica-Bold'
+                )
+                
+                progress_bar.progress(20)
+                
+                # KAPAK SAYFASI
+                elements.append(Spacer(1, 3*cm))
+                elements.append(Paragraph("TÜRKİYE SATIŞ ANALİZİ", title_style))
+                elements.append(Paragraph("Kapsamlı Performans ve Strateji Raporu", subtitle_style))
+                elements.append(Spacer(1, 1*cm))
+                
+                # Özet kutu
+                summary_data = [
+                    ['Rapor Tarihi:', datetime.now().strftime('%d.%m.%Y %H:%M')],
+                    ['Toplam PF Kutu:', f'{filtered_pf_toplam:,.0f}'],
+                    ['Genel Pazar Payı:', f'%{genel_pazar_payi:.1f}'],
+                    ['Analiz Edilen Şehir:', f'{len(investment_df_original)}'],
+                    ['Aktif Satış Noktası:', f'{filtered_aktif_sehir}']
+                ]
+                
+                summary_table = Table(summary_data, colWidths=[8*cm, 8*cm])
+                summary_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F0F9FF')),
+                    ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#1E40AF')),
+                    ('TEXTCOLOR', (1, 0), (1, -1), colors.black),
+                    ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                    ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, -1), 12),
+                    ('PADDING', (0, 0), (-1, -1), 12),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#3B82F6'))
+                ]))
+                elements.append(summary_table)
+                elements.append(PageBreak())
+                
+                progress_bar.progress(30)
+                status_text.text("📊 Yönetici özeti hazırlanıyor...")
+                
+                # 1. YÖNETİCİ ÖZETİ
+                elements.append(Paragraph("1. YÖNETİCİ ÖZETİ", heading_style))
+                
+                ozet_text = f"""
+                <para alignment="justify">
+                Bu rapor, Türkiye genelindeki {len(investment_df_original)} şehrin satış performansını analiz etmektedir. 
+                Toplam <b>{filtered_pf_toplam:,.0f}</b> PF Kutu satışı gerçekleştirilmiş olup, 
+                genel pazar payımız <b>%{genel_pazar_payi:.1f}</b> seviyesindedir. 
+                Analiz sonucunda {strategy_counts.get('🚀 Agresif', 0)} şehirde agresif yatırım fırsatı, 
+                {strategy_counts.get('⚡ Hızlandırılmış', 0)} şehirde hızlandırılmış büyüme potansiyeli tespit edilmiştir.
+                </para>
+                """
+                elements.append(Paragraph(ozet_text, styles['Normal']))
+                elements.append(Spacer(1, 0.5*cm))
+                
+                # Performans göstergeleri
+                kpi_data = [
+                    ['KPI', 'Değer', 'Durum'],
+                    ['Toplam PF Satış', f'{filtered_pf_toplam:,.0f}', '✓'],
+                    ['Pazar Payı', f'%{genel_pazar_payi:.1f}', '✓' if genel_pazar_payi > 10 else '⚠'],
+                    ['Aktif Şehir', f'{filtered_aktif_sehir}', '✓'],
+                    ['Ortalama Şehir Başı Satış', f'{filtered_pf_toplam / filtered_aktif_sehir:,.0f}' if filtered_aktif_sehir > 0 else '0', '✓']
+                ]
+                
+                kpi_table = Table(kpi_data, colWidths=[6*cm, 7*cm, 3*cm])
+                kpi_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3B82F6')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 12),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+                ]))
+                elements.append(kpi_table)
+                elements.append(PageBreak())
+                
+                progress_bar.progress(40)
+                status_text.text("🎯 Strateji analizi ekleniyor...")
+                
+                # 2. YATIRIM STRATEJİSİ ANALİZİ
+                elements.append(Paragraph("2. YATIRIM STRATEJİSİ ANALİZİ", heading_style))
+                
+                strateji_summary = investment_df_original.groupby('Yatırım Stratejisi').agg({
+                    'Şehir': 'count',
+                    'PF Kutu': 'sum',
+                    'Pazar Payı %': 'mean'
+                }).reset_index().sort_values('PF Kutu', ascending=False)
+                
+                strateji_data = [['Strateji', 'Şehir', 'Toplam PF', 'Ort. Pay', 'Öncelik']]
+                for idx, row in strateji_summary.iterrows():
+                    oncelik = 'YÜKSEK' if '🚀' in row['Yatırım Stratejisi'] else 'ORTA' if '⚡' in row['Yatırım Stratejisi'] else 'DÜŞÜK'
+                    strateji_data.append([
+                        row['Yatırım Stratejisi'].replace('🚀 ', '').replace('⚡ ', '').replace('🛡️ ', '').replace('💎 ', '').replace('👁️ ', ''),
+                        f"{int(row['Şehir'])}",
+                        f"{row['PF Kutu']:,.0f}",
+                        f"%{row['Pazar Payı %']:.1f}",
+                        oncelik
+                    ])
+                
+                strateji_table = Table(strateji_data, colWidths=[4*cm, 2.5*cm, 3.5*cm, 3*cm, 3*cm])
+                strateji_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#10B981')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 11),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+                ]))
+                elements.append(strateji_table)
+                elements.append(Spacer(1, 0.5*cm))
+                
+                # Strateji açıklamaları
+                elements.append(Paragraph("Strateji Açıklamaları:", subheading_style))
+                strateji_aciklama = """
+                <para>
+                <b>• Agresif:</b> Büyük pazarlarda düşük payımız var - En yüksek ROI potansiyeli<br/>
+                <b>• Hızlandırılmış:</b> İyi gidiyoruz, liderliğe doğru ilerliyoruz<br/>
+                <b>• Koruma:</b> Zaten lideriz, pozisyonu korumak kritik<br/>
+                <b>• Potansiyel:</b> Küçük ama büyüyen pazarlar<br/>
+                <b>• İzleme:</b> Düşük öncelikli pazarlar
+                </para>
+                """
+                elements.append(Paragraph(strateji_aciklama, styles['Normal']))
+                elements.append(PageBreak())
+                
+                progress_bar.progress(50)
+                status_text.text("🏆 Bölge performansı ekleniyor...")
+                
+                # 3. BÖLGE PERFORMANS ANALİZİ
+                elements.append(Paragraph("3. BÖLGE PERFORMANS ANALİZİ", heading_style))
+                
+                top_bolge = display_bolge.head(8)
+                bolge_data = [['Sıra', 'Bölge', 'PF Kutu', 'Toplam Pazar', 'Pay %', 'Durum']]
+                for idx, row in top_bolge.iterrows():
+                    durum = '🟢' if row['Pazar Payı %'] > 15 else '🟡' if row['Pazar Payı %'] > 8 else '🔴'
+                    bolge_data.append([
+                        f"{idx+1}",
+                        row['Bölge'],
+                        f"{row['PF Kutu']:,.0f}",
+                        f"{row['Toplam Kutu']:,.0f}",
+                        f"%{row['Pazar Payı %']:.1f}",
+                        durum
+                    ])
+                
+                bolge_table = Table(bolge_data, colWidths=[1.2*cm, 4.5*cm, 3*cm, 3.5*cm, 2.5*cm, 1.8*cm])
+                bolge_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#F59E0B')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+                ]))
+                elements.append(bolge_table)
+                elements.append(Spacer(1, 0.5*cm))
+                
+                # Bölge yorumu
+                en_iyi_bolge = display_bolge.iloc[0]
+                bolge_yorum = f"""
+                <para alignment="justify">
+                En yüksek performans <b>{en_iyi_bolge['Bölge']}</b> bölgesinde gözlemlenmektedir 
+                (<b>{en_iyi_bolge['PF Kutu']:,.0f}</b> PF Kutu, %{en_iyi_bolge['Pazar Payı %']:.1f} pazar payı). 
+                Bu bölgenin başarı faktörleri diğer bölgelere örnek teşkil edebilir.
+                </para>
+                """
+                elements.append(Paragraph(bolge_yorum, styles['Normal']))
+                elements.append(PageBreak())
+                
+                progress_bar.progress(60)
+                status_text.text("🌟 Top şehirler ekleniyor...")
+                
+                # 4. TOP 20 ŞEHİR PERFORMANSI
+                elements.append(Paragraph("4. TOP 20 ŞEHİR DETAY ANALİZİ", heading_style))
+                
+                top20_summary = investment_df_original.nlargest(20, 'PF Kutu')
+                
+                # İlk 10
+                sehir_data1 = [['#', 'Şehir', 'Bölge', 'PF Kutu', 'Pay %']]
+                for i, (idx, row) in enumerate(top20_summary.head(10).iterrows(), 1):
+                    sehir_data1.append([
+                        f"{i}",
+                        row['Şehir'],
+                        row['Bölge'],
+                        f"{row['PF Kutu']:,.0f}",
+                        f"%{row['Pazar Payı %']:.1f}"
+                    ])
+                
+                sehir_table1 = Table(sehir_data1, colWidths=[1*cm, 4*cm, 4*cm, 3.5*cm, 3.5*cm])
+                sehir_table1.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8B5CF6')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+                ]))
+                elements.append(sehir_table1)
+                elements.append(Spacer(1, 0.5*cm))
+                
+                # İkinci 10
+                sehir_data2 = [['#', 'Şehir', 'Bölge', 'PF Kutu', 'Pay %']]
+                for i, (idx, row) in enumerate(top20_summary.iloc[10:].iterrows(), 11):
+                    sehir_data2.append([
+                        f"{i}",
+                        row['Şehir'],
+                        row['Bölge'],
+                        f"{row['PF Kutu']:,.0f}",
+                        f"%{row['Pazar Payı %']:.1f}"
+                    ])
+                
+                sehir_table2 = Table(sehir_data2, colWidths=[1*cm, 4*cm, 4*cm, 3.5*cm, 3.5*cm])
+                sehir_table2.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8B5CF6')),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 10),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                    ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+                ]))
+                elements.append(sehir_table2)
+                
+                # Top 20 toplam katkı
+                top20_toplam = top20_summary['PF Kutu'].sum()
+                top20_oran = (top20_toplam / filtered_pf_toplam * 100)
+                
+                top20_yorum = f"""
+                <para alignment="justify">
+                <b>Konsantrasyon Analizi:</b> Top 20 şehir, toplam satışların <b>%{top20_oran:.1f}</b>'ini oluşturmaktadır 
+                (<b>{top20_toplam:,.0f}</b> PF Kutu). Bu, satışların {'yüksek' if top20_oran > 60 else 'orta' if top20_oran > 40 else 'düşük'} 
+                seviyede konsantre olduğunu göstermektedir.
+                </para>
+                """
+                elements.append(Spacer(1, 0.5*cm))
+                elements.append(Paragraph(top20_yorum, styles['Normal']))
+                elements.append(PageBreak())
+                
+                progress_bar.progress(70)
+                status_text.text("💎 Fırsatlar analiz ediliyor...")
+                
+                # 5. BÜYÜK FIRSATLAR
+                if 'firsatlar_df' in locals() and len(firsatlar_df) > 0:
+                    elements.append(Paragraph("5. BÜYÜK FIRSATLAR - AKSİYON GEREKLİ", heading_style))
+                    
+                    firsat_giris = f"""
+                    <para alignment="justify">
+                    Büyük pazar + Düşük pazar payımız kombinasyonunda <b>{len(firsatlar_df)} şehir</b> tespit edilmiştir. 
+                    Bu şehirler en yüksek ROI potansiyeline sahip olup, agresif yatırım stratejisi önerilmektedir.
+                    </para>
+                    """
+                    elements.append(Paragraph(firsat_giris, styles['Normal']))
+                    elements.append(Spacer(1, 0.3*cm))
+                    
+                    top_firsatlar_pdf = firsatlar_df.head(12)
+                    firsat_data = [['Şehir', 'Bölge', 'Mevcut Pay', 'Pazar', 'Potansiyel']]
+                    for idx, row in top_firsatlar_pdf.iterrows():
+                        firsat_data.append([
+                            row['Şehir'],
+                            row['Bölge'],
+                            f"%{row['Pazar Payı %']:.1f}",
+                            f"{row['Toplam Kutu']:,.0f}",
+                            f"{row['Büyüme Potansiyeli Kutu']:,.0f}"
+                        ])
+                    
+                    firsat_table = Table(firsat_data, colWidths=[3.5*cm, 3.5*cm, 2.5*cm, 3*cm, 3.5*cm])
+                    firsat_table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EF4444')),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 10),
+                        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#FEE2E2')),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#FEF2F2'), colors.HexColor('#FEE2E2')])
+                    ]))
+                    elements.append(firsat_table)
+                    
+                    toplam_potansiyel = firsatlar_df['Büyüme Potansiyeli Kutu'].sum()
+                    firsat_sonuc = f"""
+                    <para alignment="justify">
+                    <b>Toplam Potansiyel:</b> Bu {len(firsatlar_df)} şehirde toplamda <b>{toplam_potansiyel:,.0f} kutu</b> 
+                    büyüme potansiyeli mevcuttur. Bu, mevcut satışlarımızın <b>%{(toplam_potansiyel/filtered_pf_toplam*100):.1f}</b>'i 
+                    kadardır.
+                    </para>
+                    """
+                    elements.append(Spacer(1, 0.5*cm))
+                    elements.append(Paragraph(firsat_sonuc, styles['Normal']))
+                    elements.append(PageBreak())
+                
+                progress_bar.progress(80)
+                status_text.text("👥 Müdür performansları ekleniyor...")
+                
+                # 6. TİCARET MÜDÜRÜ PERFORMANSI
+                elements.append(Paragraph("6. TİCARET MÜDÜRÜ PERFORMANS ANALİZİ", heading_style))
+                
+                if 'mudur_performance' in locals():
+                    mudur_data = [['Sıra', 'Müdür', 'PF Kutu', 'Şehir', 'Pay %']]
+                    for idx, row in mudur_performance.head(10).iterrows():
+                        mudur_data.append([
+                            f"{row['Rank']}",
+                            row['Ticaret Müdürü'],
+                            f"{row['PF Kutu']:,.0f}",
+                            f"{int(row['Şehir'])}",
+                            f"%{row['Toplam Pazar Payı %']:.1f}"
+                        ])
+                    
+                    mudur_table = Table(mudur_data, colWidths=[1.5*cm, 5*cm, 3.5*cm, 2.5*cm, 3.5*cm])
+                    mudur_table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#0EA5E9')),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 10),
+                        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.lightgrey])
+                    ]))
+                    elements.append(mudur_table)
+                    
+                    # Top 3 müdür vurgusu
+                    top3_pf = mudur_performance.head(3)['PF Kutu'].sum()
+                    top3_oran = (top3_pf / filtered_pf_toplam * 100)
+                    
+                    mudur_yorum = f"""
+                    <para alignment="justify">
+                    <b>Performans Dağılımı:</b> Top 3 ticaret müdürü, toplam satışların <b>%{top3_oran:.1f}</b>'ini gerçekleştirmektedir. 
+                    Bu müdürlerin başarı faktörleri analiz edilerek diğer müdürlere aktarılmalıdır.
+                    </para>
+                    """
+                    elements.append(Spacer(1, 0.5*cm))
+                    elements.append(Paragraph(mudur_yorum, styles['Normal']))
+                
+                elements.append(PageBreak())
+                
+                progress_bar.progress(90)
+                status_text.text("📋 Öneriler hazırlanıyor...")
+                
+                # 7. ÖNERİLER VE SONUÇ
+                elements.append(Paragraph("7. ÖNERİLER VE AKSİYON PLANI", heading_style))
+                
+                oneriler_text = f"""
+                <para alignment="justify" spaceBefore="10" spaceAfter="10">
+                <b>1. Öncelikli Aksiyonlar:</b><br/>
+                • <b>Agresif Yatırım:</b> {strategy_counts.get('🚀 Agresif', 0)} şehire odaklanılmalı - 
+                büyük pazarlarda düşük payımız var, en yüksek ROI potansiyeli bu şehirlerde<br/>
+                • <b>Hızlandırılmış Büyüme:</b> {strategy_counts.get('⚡ Hızlandırılmış', 0)} şehirde momentum yakalanmış, 
+                liderliğe geçiş için hızlandırılmış yatırım yapılmalı<br/>
+                • <b>Büyük Fırsatlar:</b> {len(firsatlar_df) if 'firsatlar_df' in locals() else 0} şehirde kritik fırsat mevcut, 
+                özel kampanyalar ve promosyonlar düzenlenmeli<br/>
+                <br/>
+                <b>2. Pazar Payı Artışı Hedefleri:</b><br/>
+                • <b>Mevcut Durum:</b> %{genel_pazar_payi:.1f} genel pazar payı<br/>
+                • <b>Kısa Vadeli Hedef (3 ay):</b> %{genel_pazar_payi * 1.1:.1f} seviyesine çıkmak (+%{(genel_pazar_payi * 0.1):.1f})<br/>
+                • <b>Orta Vadeli Hedef (6 ay):</b> %{genel_pazar_payi * 1.2:.1f}st.sidebar.header("🔍 Filtre")
+
+# Görünüm modu
+view_mode = st.sidebar.radio(
+    "Görünüm Modu",
+    ["Bölge Görünümü", "Şehir Görünümü"],
+    index=0
+)
+
+# Ticaret Müdürü filtresi
+managers = ["TÜMÜ"] + sorted(merged["Ticaret Müdürü"].unique())
+selected_manager = st.sidebar.selectbox("Ticaret Müdürü", managers)
+
+st.sidebar.markdown("---")
+st.sidebar.header("🔍 Gelişmiş Filtreler")
+
+# Bölge filtresi
+bolge_list = ["TÜMÜ"] + sorted([b for b in merged["Bölge"].unique() if b != "DİĞER"])
+selected_bolge = st.sidebar.selectbox("Bölge Seçin", bolge_list)
+
+# Yatırım stratejisi filtresi
+strateji_list = ["Tümü", "🚀 Agresif", "⚡ Hızlandırılmış", "🛡️ Koruma", "💎 Potansiyel", "👁️ İzleme"]
+selected_strateji = st.sidebar.selectbox("Yatırım Stratejisi", strateji_list)
+
+# YENİ: Sayısal Filtreler
+st.sidebar.markdown("---")
+st.sidebar.header("📊 Sayısal Filtreler")
+
+with st.sidebar.expander("🎚️ Pazar Büyüklüğü"):
+    pazar_min = int(merged['Toplam Kutu'].min())
+    pazar_max = int(merged['Toplam Kutu'].max())
+    pazar_range = st.slider(
+        "Toplam Pazar Aralığı",
+        pazar_min, pazar_max,
+        (pazar_min, pazar_max),
+        step=10000
+    )
+
+with st.sidebar.expander("📈 Pazar Payı %"):
+    pay_range = st.slider(
+        "Pazar Payı Aralığı",
+        0.0, 100.0, (0.0, 100.0), 0.5
+    )
+
+with st.sidebar.expander("📦 PF Kutu"):
+    pf_max = int(merged['PF Kutu'].max())
+    pf_range = st.slider(
+        "PF Kutu Aralığı",
+        0, pf_max, (0, pf_max),
+        step=5000
+    )
+
+# YENİ: Akıllı Arama
+st.sidebar.markdown("---")
+st.sidebar.header("🔍 Akıllı Arama")
+arama_text = st.sidebar.text_input("Şehir/Bölge/Müdür Ara", placeholder="Örn: İstanbul")
 
 
 
