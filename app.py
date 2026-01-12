@@ -2453,4 +2453,97 @@ st.markdown("---")
 
 
 
+# -----------------------------------------------------------------------------
+# PDF EXPORT – AKTİF
+# -----------------------------------------------------------------------------
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from io import BytesIO
+
+def generate_pdf(df):
+    buffer = BytesIO()
+
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        rightMargin=30,
+        leftMargin=30,
+        topMargin=30,
+        bottomMargin=30
+    )
+
+    styles = getSampleStyleSheet()
+    story = []
+
+    # ------------------------------------------------------------------
+    # BAŞLIK
+    # ------------------------------------------------------------------
+    story.append(Paragraph("<b>Yatırım Stratejisi Analiz Raporu</b>", styles["Title"]))
+    story.append(Spacer(1, 12))
+
+    story.append(Paragraph(
+        "Bu rapor şehir, bölge ve strateji bazlı satış performansı analizini içerir.",
+        styles["Normal"]
+    ))
+    story.append(Spacer(1, 16))
+
+    # ------------------------------------------------------------------
+    # YÖNETİCİ ÖZETİ
+    # ------------------------------------------------------------------
+    total_pf = df["PF Kutu"].sum()
+    avg_share = df["Pazar Payı %"].mean()
+    city_count = df["Şehir"].nunique()
+
+    summary_text = f"""
+    <b>Yönetici Özeti</b><br/>
+    • Toplam PF Kutu: <b>{total_pf:,.0f}</b><br/>
+    • Ortalama Pazar Payı: <b>%{avg_share:.1f}</b><br/>
+    • Analiz Edilen Şehir Sayısı: <b>{city_count}</b>
+    """
+
+    story.append(Paragraph(summary_text, styles["Normal"]))
+    story.append(Spacer(1, 20))
+
+    # ------------------------------------------------------------------
+    # TABLO
+    # ------------------------------------------------------------------
+    table_df = df[
+        ["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "Pazar Payı %", "Yatırım Stratejisi"]
+    ].sort_values("PF Kutu", ascending=False).head(20)
+
+    table_data = [table_df.columns.tolist()] + table_df.values.tolist()
+
+    table = Table(table_data, repeatRows=1)
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#1E40AF")),
+        ("TEXTCOLOR", (0,0), (-1,0), colors.white),
+        ("GRID", (0,0), (-1,-1), 0.5, colors.grey),
+        ("FONT", (0,0), (-1,0), "Helvetica-Bold"),
+        ("ALIGN", (2,1), (-1,-1), "RIGHT"),
+        ("BACKGROUND", (0,1), (-1,-1), colors.whitesmoke)
+    ]))
+
+    story.append(Paragraph("<b>En Yüksek PF Kutuya Sahip İlk 20 Şehir</b>", styles["Heading2"]))
+    story.append(Spacer(1, 8))
+    story.append(table)
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer
+
+with col_exp2:
+    if st.button("📄 PDF Raporu Oluştur", type="primary"):
+        pdf_file = generate_pdf(investment_df_original)
+
+        st.download_button(
+            label="⬇️ PDF Raporunu İndir",
+            data=pdf_file,
+            file_name="yatirim_stratejisi_raporu.pdf",
+            mime="application/pdf"
+        )
+
+
+
 
