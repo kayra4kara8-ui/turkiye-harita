@@ -1173,72 +1173,64 @@ if len(investment_df_original) > 0:
         """)
     
     # BCG Dağılımı - Grafiğin Altında
-   st.markdown("---")
-st.markdown("##### 📊 BCG Kadran Dağılımı")
-st.caption("Her kadranda kaç şehir var ve toplam PF Kutu hacmi ne kadar?")
-
-# 4 kolon yan yana
-col_dist1, col_dist2, col_dist3, col_dist4 = st.columns(4)
-
-bcg_stats = scatter_df.groupby('BCG Kategori').agg({
-    'Şehir': 'count',
-    'PF Kutu': 'sum',
-    'Toplam Kutu': 'sum',
-    'Pazar Payı %': 'mean'
-}).reset_index()
-bcg_stats.columns = ['Kategori', 'Şehir Sayısı', 'Toplam PF Kutu', 'Toplam Pazar', 'Ort. Pay']
-
-bcg_dict = bcg_stats.set_index('Kategori').to_dict('index')
-
-with col_dist1:
-    if "⭐ Stars (Yıldızlar)" in bcg_dict:
-        row = bcg_dict["⭐ Stars (Yıldızlar)"]
-        st.metric(
-            label="⭐ Stars",
-            value=f"{int(row['Şehir Sayısı'])} şehir",
-            delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-            help="Bu kadranda toplam PF Kutu hacmi"
-        )
-        # YENİ: Toplam Pazar
-        st.caption(f"📦 Toplam Pazar: **{row['Toplam Pazar']:,.0f}**")
-
-with col_dist2:
-    if "❓ Question Marks (Soru İşaretleri)" in bcg_dict:
-        row = bcg_dict["❓ Question Marks (Soru İşaretleri)"]
-        st.metric(
-            label="❓ Question Marks",
-            value=f"{int(row['Şehir Sayısı'])} şehir",
-            delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-            help="Bu kadranda toplam PF Kutu hacmi"
-        )
-        # YENİ: Toplam Pazar
-        st.caption(f"📦 Toplam Pazar: **{row['Toplam Pazar']:,.0f}**")
-
-with col_dist3:
-    if "💰 Cash Cows (Nakit İnekleri)" in bcg_dict:
-        row = bcg_dict["💰 Cash Cows (Nakit İnekleri)"]
-        st.metric(
-            label="💰 Cash Cows",
-            value=f"{int(row['Şehir Sayısı'])} şehir",
-            delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-            help="Bu kadranda toplam PF Kutu hacmi"
-        )
-        # YENİ: Toplam Pazar
-        st.caption(f"📦 Toplam Pazar: **{row['Toplam Pazar']:,.0f}**")
-
-with col_dist4:
-    if "🐕 Dogs (Düşük Öncelik)" in bcg_dict:
-        row = bcg_dict["🐕 Dogs (Düşük Öncelik)"]
-        st.metric(
-            label="🐕 Dogs",
-            value=f"{int(row['Şehir Sayısı'])} şehir",
-            delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
-            delta_color="off",
-            help="Bu kadranda toplam PF Kutu hacmi"
-        )
-        # YENİ: Toplam Pazar
-        st.caption(f"📦 Toplam Pazar: **{row['Toplam Pazar']:,.0f}**")
-
+    st.markdown("---")
+    st.markdown("##### 📊 BCG Kadran Dağılımı")
+    st.caption("Her kadranda kaç şehir var ve toplam PF Kutu hacmi ne kadar?")
+    
+    # 4 kolon yan yana
+    col_dist1, col_dist2, col_dist3, col_dist4 = st.columns(4)
+    
+    bcg_stats = scatter_df.groupby('BCG Kategori').agg({
+        'Şehir': 'count',
+        'PF Kutu': 'sum',
+        'Pazar Payı %': 'mean'
+    }).reset_index()
+    bcg_stats.columns = ['Kategori', 'Şehir Sayısı', 'Toplam PF Kutu', 'Ort. Pay']
+    
+    bcg_dict = bcg_stats.set_index('Kategori').to_dict('index')
+    
+    with col_dist1:
+        if "⭐ Stars (Yıldızlar)" in bcg_dict:
+            row = bcg_dict["⭐ Stars (Yıldızlar)"]
+            st.metric(
+                label="⭐ Stars",
+                value=f"{int(row['Şehir Sayısı'])} şehir",
+                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
+                help="Bu kadranda toplam PF Kutu hacmi"
+            )
+    
+    with col_dist2:
+        if "❓ Question Marks (Soru İşaretleri)" in bcg_dict:
+            row = bcg_dict["❓ Question Marks (Soru İşaretleri)"]
+            st.metric(
+                label="❓ Question Marks",
+                value=f"{int(row['Şehir Sayısı'])} şehir",
+                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
+                help="Bu kadranda toplam PF Kutu hacmi"
+            )
+    
+    with col_dist3:
+        if "💰 Cash Cows (Nakit İnekleri)" in bcg_dict:
+            row = bcg_dict["💰 Cash Cows (Nakit İnekleri)"]
+            st.metric(
+                label="💰 Cash Cows",
+                value=f"{int(row['Şehir Sayısı'])} şehir",
+                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
+                help="Bu kadranda toplam PF Kutu hacmi"
+            )
+    
+    with col_dist4:
+        if "🐕 Dogs (Düşük Öncelik)" in bcg_dict:
+            row = bcg_dict["🐕 Dogs (Düşük Öncelik)"]
+            st.metric(
+                label="🐕 Dogs",
+                value=f"{int(row['Şehir Sayısı'])} şehir",
+                delta=f"{row['Toplam PF Kutu']:,.0f} PF Kutu",
+                delta_color="off",
+                help="Bu kadranda toplam PF Kutu hacmi"
+            )
+    
+    st.markdown("---")
     
     # 4. ÇOK BOYUTLU ŞEHİR ANALİZİ - PROFESYONEL
     st.markdown("#### 🔗 Çok Boyutlu Şehir Analizi (Top 30)")
@@ -2352,7 +2344,6 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
-
 
 
 
