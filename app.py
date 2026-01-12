@@ -2366,83 +2366,88 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
 import plotly.express as px
 import numpy as np
 
-    # 2. MONTE CARLO SİMÜLASYONU
-    st.markdown("#### 🎲 Monte Carlo Risk & Fırsat Simülasyonu")
-    st.caption("🔮 Gelecek dönem satış tahminleri - 1000 senaryo simülasyonu")
-    
-    col_mc1, col_mc2 = st.columns([2, 1])
-    
-    with col_mc1:
-        top10_mc = investment_df_original.nlargest(10, 'PF Kutu')
-        
-        np.random.seed(42)
-        n_simulations = 1000
-        
-        simulation_results = {}
-        
-        for idx, row in top10_mc.iterrows():
-            city = row['Şehir']
-            current_pf = row['PF Kutu']
-            market_share = row['Pazar Payı %']
-            
-            growth_mean = 0.05 if market_share < 20 else (0.03 if market_share < 40 else 0.01)
-            growth_std = 0.15
-            
-            simulated_growth = np.random.normal(growth_mean, growth_std, n_simulations)
-            simulated_pf = current_pf * (1 + simulated_growth)
-            
-            simulation_results[city] = {
-                'current': current_pf,
-                'simulations': simulated_pf,
-                'mean': simulated_pf.mean(),
-                'p10': np.percentile(simulated_pf, 10),
-                'p50': np.percentile(simulated_pf, 50),
-                'p90': np.percentile(simulated_pf, 90)
-            }
-        
-        fig_mc = go.Figure()
-        
-        for city, results in simulation_results.items():
-            fig_mc.add_trace(go.Box(
-                y=results['simulations'],
-                name=city,
-                boxmean='sd',
-                marker_color='#3B82F6'
-            ))
-        
-        fig_mc.update_layout(
-            height=500,
-            plot_bgcolor='#0f172a',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='white', size=10),
-            xaxis=dict(title='Şehir', tickangle=-45, showgrid=False),
-            yaxis=dict(title='Simüle Edilmiş PF Kutu', showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
-            showlegend=False
+# =============================================================================
+# 2. MONTE CARLO SİMÜLASYONU
+# =============================================================================
+st.markdown("#### 🎲 Monte Carlo Risk & Fırsat Simülasyonu")
+st.caption("🔮 Gelecek dönem satış tahminleri - 1000 senaryo simülasyonu")
+
+col_mc1, col_mc2 = st.columns([2, 1])
+
+with col_mc1:
+    top10_mc = investment_df_original.nlargest(10, 'PF Kutu')
+
+    np.random.seed(42)
+    n_simulations = 1000
+
+    simulation_results = {}
+
+    for idx, row in top10_mc.iterrows():
+        city = row['Şehir']
+        current_pf = row['PF Kutu']
+        market_share = row['Pazar Payı %']
+
+        growth_mean = 0.05 if market_share < 20 else (0.03 if market_share < 40 else 0.01)
+        growth_std = 0.15
+
+        simulated_growth = np.random.normal(growth_mean, growth_std, n_simulations)
+        simulated_pf = current_pf * (1 + simulated_growth)
+
+        simulation_results[city] = {
+            'current': current_pf,
+            'simulations': simulated_pf,
+            'mean': simulated_pf.mean(),
+            'p10': np.percentile(simulated_pf, 10),
+            'p50': np.percentile(simulated_pf, 50),
+            'p90': np.percentile(simulated_pf, 90)
+        }
+
+    fig_mc = go.Figure()
+
+    for city, results in simulation_results.items():
+        fig_mc.add_trace(go.Box(
+            y=results['simulations'],
+            name=city,
+            boxmean='sd'
+        ))
+
+    fig_mc.update_layout(
+        height=500,
+        xaxis_title='Şehir',
+        yaxis_title='Simüle Edilmiş PF Kutu',
+        showlegend=False
+    )
+
+    st.plotly_chart(fig_mc, use_container_width=True)
+
+with col_mc2:
+    st.markdown("##### 📈 Senaryo Analizi")
+
+    selected_city_mc = st.selectbox(
+        "Şehir Seç",
+        list(simulation_results.keys()),
+        key='mc_select'
+    )
+
+    if selected_city_mc:
+        res = simulation_results[selected_city_mc]
+
+        st.metric("📊 Mevcut Durum", f"{res['current']:,.0f}")
+        st.metric(
+            "🎯 Ortalama Tahmin",
+            f"{res['mean']:,.0f}",
+            delta=f"{((res['mean']/res['current']-1)*100):.1f}%"
         )
-        
-        st.plotly_chart(fig_mc, use_container_width=True)
-    
-    with col_mc2:
-        st.markdown("##### 📈 Senaryo Analizi")
-        
-        selected_city_mc = st.selectbox("Şehir Seç", list(simulation_results.keys()), key='mc_select')
-        
-        if selected_city_mc:
-            res = simulation_results[selected_city_mc]
-            
-            st.metric("📊 Mevcut Durum", f"{res['current']:,.0f}")
-            st.metric("🎯 Ortalama Tahmin", f"{res['mean']:,.0f}", 
-                     delta=f"{((res['mean']/res['current']-1)*100):.1f}%")
-            
-            st.markdown("**Senaryo Aralıkları:**")
-            st.info(f"😰 **Kötümser (%10):** {res['p10']:,.0f}")
-            st.success(f"😊 **Gerçekçi (%50):** {res['p50']:,.0f}")
-            st.warning(f"🚀 **İyimser (%90):** {res['p90']:,.0f}")
-            
-            risk_range = res['p90'] - res['p10']
-            st.caption(f"📊 Risk Aralığı: {risk_range:,.0f} kutu")
-    
-    st.markdown("---")
+
+        st.markdown("**Senaryo Aralıkları:**")
+        st.info(f"😰 Kötümser (%10): {res['p10']:,.0f}")
+        st.success(f"😊 Gerçekçi (%50): {res['p50']:,.0f}")
+        st.warning(f"🚀 İyimser (%90): {res['p90']:,.0f}")
+
+        st.caption(f"📊 Risk Aralığı: {res['p90'] - res['p10']:,.0f} kutu")
+
+st.markdown("---")
+
     
     # 3. KORELASYON MATRİSİ
     st.markdown("#### 🔗 Metrik Korelasyon Analizi")
@@ -2723,6 +2728,7 @@ with col_exp1:
 
 with col_exp2:
     st.info("💡 PDF export özelliği yakında eklenecek!")
+
 
 
 
