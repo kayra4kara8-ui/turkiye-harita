@@ -2353,6 +2353,36 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
 
 
 
+# =============================================================================
+# EXPORT
+# =============================================================================
+st.markdown("---")
+st.subheader("📥 Raporları İndir")
+
+col_exp1, col_exp2 = st.columns(2)
+
+with col_exp1:
+    if len(investment_df_original) > 0:
+        export_df = investment_df_original[["Şehir", "Bölge", "PF Kutu", "Toplam Kutu", "Pazar Payı %", "Yatırım Stratejisi", "Pazar Büyüklüğü", "Performans", "Büyüme Potansiyeli", "Ticaret Müdürü"]].copy()
+        export_df = export_df.sort_values("PF Kutu", ascending=False)
+        
+        from io import BytesIO
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            export_df.to_excel(writer, sheet_name='Yatırım Stratejisi', index=False)
+            display_bolge.to_excel(writer, sheet_name='Bölge Analizi', index=False)
+        
+        st.download_button(
+            label="📊 Yatırım Stratejisi Raporu (Excel)",
+            data=output.getvalue(),
+            file_name="yatirim_stratejisi_raporu.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+with col_exp2:
+    st.info("💡 PDF export özelliği yakında eklenecek!")
+
+
 
 
 
