@@ -15,40 +15,40 @@ st.set_page_config(page_title="Türkiye Satış Haritası", layout="wide")
 st.title("🗺️ Türkiye – Bölge & İl Bazlı Performans Analizi")
 
 # =============================================================================
-# BÖLGE RENKLERİ (COĞRAFİ & MODERN)
+# ŞEHİR VE BÖLGE NORMALIZASYON
 # =============================================================================
+
+# Bölge renkleri
 REGION_COLORS = {
-    "MARMARA": "#0EA5E9",              # Sky Blue - Deniz ve boğazlar
-    "BATI ANADOLU": "#14B8A6",         # Turkuaz-yeşil arası
-    "EGE": "#FCD34D",                  # BAL SARI (Batı Anadolu ile aynı)
-    "İÇ ANADOLU": "#F59E0B",           # Amber - Kuru bozkır
-    "GÜNEY DOĞU ANADOLU": "#E07A5F",   # Terracotta 
-    "KUZEY ANADOLU": "#059669",        # Emerald - Yemyeşil ormanlar
-    "KARADENİZ": "#059669",            # Emerald (Kuzey Anadolu ile aynı)
-    "AKDENİZ": "#8B5CF6",              # Violet - Akdeniz
-    "DOĞU ANADOLU": "#7C3AED",         # Purple - Yüksek dağlar
-    "DİĞER": "#64748B"                 # Slate Gray
+    "MARMARA": "#0EA5E9",
+    "BATI ANADOLU": "#14B8A6",
+    "EGE": "#FCD34D",
+    "İÇ ANADOLU": "#F59E0B",
+    "GÜNEY DOĞU ANADOLU": "#E07A5F",
+    "KUZEY ANADOLU": "#059669",
+    "KARADENİZ": "#059669",
+    "AKDENİZ": "#8B5CF6",
+    "DOĞU ANADOLU": "#7C3AED",
+    "DİĞER": "#64748B"
 }
 
-# =============================================================================
-# ŞEHİR EŞLEŞTİRME (MASTER)
-# =============================================================================
+# GeoJSON şehir isimleri düzeltme
 FIX_CITY_MAP = {
     "AGRI": "AĞRI",
-    "BARTÄ±N": "BARTIN",
-    "BINGÃ¶L": "BİNGÖL",
-    "DÃ¼ZCE": "DÜZCE",
-    "ELAZIG": "ELAZIĞ",
+    "BARTIN": "BARTIN",
+    "BINGOL": "BİNGÖL",
+    "DUZCE": "DÜZCE",
+    "ELAZIG": "ELAZĞ",
     "ESKISEHIR": "ESKİŞEHİR",
-    "GÃ¼MÃ¼SHANE": "GÜMÜŞHANE",
+    "GUMUSHANE": "GÜMÜŞHANE",
     "HAKKARI": "HAKKARİ",
     "ISTANBUL": "İSTANBUL",
     "IZMIR": "İZMİR",
-    "IÄ\x9fDIR": "IĞDIR",
-    "KARABÃ¼K": "KARABÜK",
+    "IGDIR": "IĞDIR",
+    "KARABUK": "KARABÜK",
     "KINKKALE": "KIRIKKALE",
     "KIRSEHIR": "KIRŞEHİR",
-    "KÃ¼TAHYA": "KÜTAHYA",
+    "KUTAHYA": "KÜTAHYA",
     "MUGLA": "MUĞLA",
     "MUS": "MUŞ",
     "NEVSEHIR": "NEVŞEHİR",
@@ -57,31 +57,188 @@ FIX_CITY_MAP = {
     "SIRNAK": "ŞIRNAK",
     "TEKIRDAG": "TEKİRDAĞ",
     "USAK": "UŞAK",
-    "ZINGULDAK": "ZONGULDAK",
-    "Ã\x87ANAKKALE": "ÇANAKKALE",
-    "Ã\x87ANKIRI": "ÇANKIRI",
-    "Ã\x87ORUM": "ÇORUM",
+    "ZONGULDAK": "ZONGULDAK",
+    "CANAKKALE": "ÇANAKKALE",
+    "CANKIRI": "ÇANKIRI",
+    "CORUM": "ÇORUM",
     "K. MARAS": "KAHRAMANMARAŞ"
 }
 
+# Veri şehir isimleri normalizasyon
+CITY_NORMALIZE_CLEAN = {
+    'ADANA': 'Adana',
+    'ADIYAMAN': 'Adiyaman',
+    'AFYONKARAHISAR': 'Afyonkarahisar',
+    'AFYON': 'Afyonkarahisar',
+    'AGRI': 'Ağri',
+    'AĞRI': 'Ağri',
+    'ANKARA': 'Ankara',
+    'ANTALYA': 'Antalya',
+    'AYDIN': 'Aydin',
+    'BALIKESIR': 'Balikesir',
+    'BARTIN': 'Bartin',
+    'BATMAN': 'Batman',
+    'BILECIK': 'Bilecik',
+    'BINGOL': 'Bingöl',
+    'BİNGÖL': 'Bingöl',
+    'BITLIS': 'Bitlis',
+    'BOLU': 'Bolu',
+    'BURDUR': 'Burdur',
+    'BURSA': 'Bursa',
+    'CANAKKALE': 'Çanakkale',
+    'ÇANAKKALE': 'Çanakkale',
+    'CANKIRI': 'Çankiri',
+    'ÇANKIRI': 'Çankiri',
+    'CORUM': 'Çorum',
+    'ÇORUM': 'Çorum',
+    'DENIZLI': 'Denizli',
+    'DIYARBAKIR': 'Diyarbakir',
+    'DUZCE': 'Düzce',
+    'DÜZCE': 'Düzce',
+    'EDIRNE': 'Edirne',
+    'ELAZIG': 'Elazığ',
+    'ELAZĞ': 'Elazığ',
+    'ELAZIĞ': 'Elazığ',
+    'ERZINCAN': 'Erzincan',
+    'ERZURUM': 'Erzurum',
+    'ESKISEHIR': 'Eskişehir',
+    'ESKİŞEHİR': 'Eskişehir',
+    'GAZIANTEP': 'Gaziantep',
+    'GIRESUN': 'Giresun',
+    'GİRESUN': 'Giresun',
+    'GUMUSHANE': 'Gümüşhane',
+    'GÜMÜŞHANE': 'Gümüşhane',
+    'HAKKARI': 'Hakkari',
+    'HATAY': 'Hatay',
+    'IGDIR': 'Iğdir',
+    'IĞDIR': 'Iğdir',
+    'ISPARTA': 'Isparta',
+    'ISTANBUL': 'İstanbul',
+    'İSTANBUL': 'İstanbul',
+    'IZMIR': 'İzmir',
+    'İZMİR': 'İzmir',
+    'KAHRAMANMARAS': 'Kahramanmaraş',
+    'KAHRAMANMARAŞ': 'Kahramanmaraş',
+    'K.MARAS': 'Kahramanmaraş',
+    'KMARAS': 'Kahramanmaraş',
+    'K. MARAS': 'Kahramanmaraş',
+    'KARABUK': 'Karabük',
+    'KARABÜK': 'Karabük',
+    'KARAMAN': 'Karaman',
+    'KARS': 'Kars',
+    'KASTAMONU': 'Kastamonu',
+    'KAYSERI': 'Kayseri',
+    'KIRIKKALE': 'Kirikkale',
+    'KINKKALE': 'Kirikkale',
+    'KIRKLARELI': 'Kirklareli',
+    'KIRKLARELİ': 'Kirklareli',
+    'KIRSEHIR': 'Kırşehir',
+    'KIRŞEHİR': 'Kırşehir',
+    'KILIS': 'Kilis',
+    'KİLİS': 'Kilis',
+    'KOCAELI': 'Kocaeli',
+    'KONYA': 'Konya',
+    'KUTAHYA': 'Kütahya',
+    'KÜTAHYA': 'Kütahya',
+    'MALATYA': 'Malatya',
+    'MANISA': 'Manisa',
+    'MANİSA': 'Manisa',
+    'MARDIN': 'Mardin',
+    'MARDİN': 'Mardin',
+    'MERSIN': 'Mersin',
+    'MERSİN': 'Mersin',
+    'MUGLA': 'Muğla',
+    'MUĞLA': 'Muğla',
+    'MUS': 'Muş',
+    'MUŞ': 'Muş',
+    'NEVSEHIR': 'Nevşehir',
+    'NEVŞEHİR': 'Nevşehir',
+    'NIGDE': 'Niğde',
+    'NİĞDE': 'Niğde',
+    'ORDU': 'Ordu',
+    'OSMANIYE': 'Osmaniye',
+    'OSMANİYE': 'Osmaniye',
+    'RIZE': 'Rize',
+    'RİZE': 'Rize',
+    'SAKARYA': 'Sakarya',
+    'SAMSUN': 'Samsun',
+    'SIIRT': 'Siirt',
+    'SİİRT': 'Siirt',
+    'SINOP': 'Sinop',
+    'SİNOP': 'Sinop',
+    'SIVAS': 'Sivas',
+    'SİVAS': 'Sivas',
+    'SANLIURFA': 'Şanliurfa',
+    'ŞANLIURFA': 'Şanliurfa',
+    'SIRNAK': 'Şirnak',
+    'ŞIRNAK': 'Şirnak',
+    'TEKIRDAG': 'Tekirdağ',
+    'TEKİRDAĞ': 'Tekirdağ',
+    'TOKAT': 'Tokat',
+    'TRABZON': 'Trabzon',
+    'TUNCELI': 'Tunceli',
+    'TUNCELİ': 'Tunceli',
+    'USAK': 'Uşak',
+    'UŞAK': 'Uşak',
+    'VAN': 'Van',
+    'YALOVA': 'Yalova',
+    'YOZGAT': 'Yozgat',
+    'ZONGULDAK': 'Zonguldak',
+    'ARDAHAN': 'Ardahan'
+}
+
 # =============================================================================
-# NORMALIZATION
+# HELPER FUNCTIONS
 # =============================================================================
-def normalize_city(name):
+
+def safe_divide(a, b):
+    """Güvenli bölme işlemi"""
+    return np.where(b != 0, a / b, 0)
+
+def get_product_columns(product):
+    """Ürün kolonlarını döndür"""
+    if product == "TROCMETAM":
+        return {"pf": "TROCMETAM", "rakip": "DIGER TROCMETAM"}
+    elif product == "CORTIPOL":
+        return {"pf": "CORTIPOL", "rakip": "DIGER CORTIPOL"}
+    elif product == "DEKSAMETAZON":
+        return {"pf": "DEKSAMETAZON", "rakip": "DIGER DEKSAMETAZON"}
+    else:
+        return {"pf": "PF IZOTONIK", "rakip": "DIGER IZOTONIK"}
+
+def normalize_city_name_fixed(city_name):
+    """Düzeltilmiş şehir normalizasyon"""
+    if pd.isna(city_name):
+        return None
+    city_upper = str(city_name).strip().upper()
+    city_upper = (city_upper
+                  .replace('İ', 'I')
+                  .replace('Ş', 'S')
+                  .replace('Ğ', 'G')
+                  .replace('Ü', 'U')
+                  .replace('Ö', 'O')
+                  .replace('Ç', 'C'))
+    return CITY_NORMALIZE_CLEAN.get(city_upper, city_name)
+
+def normalize_geojson_city(name):
+    """GeoJSON şehir isimlerini normalize et"""
     if pd.isna(name):
         return None
-
+    
     name = str(name).upper().strip()
-
+    
+    # Türkçe karakterleri kaldır
     tr_map = {
         "İ": "I", "Ğ": "G", "Ü": "U",
-        "Ş": "S", "Ö": "O",
-        "Ç": "C", "Â": "A"
+        "Ş": "S", "Ö": "O", "Ç": "C", "Â": "A"
     }
-
     for k, v in tr_map.items():
         name = name.replace(k, v)
-
+    
+    # Düzeltme haritasından kontrol et
+    if name in FIX_CITY_MAP:
+        return FIX_CITY_MAP[name]
+    
     return name
 
 # =============================================================================
@@ -2436,6 +2593,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
