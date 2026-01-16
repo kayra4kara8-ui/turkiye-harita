@@ -20,11 +20,11 @@ st.title("🗺️ Türkiye – Bölge & İl Bazlı Performans Analizi")
 REGION_COLORS = {
     "MARMARA": "#0EA5E9",              # Sky Blue - Deniz ve boğazlar
     "BATI ANADOLU": "#14B8A6",         # Turkuaz-yeşil arası
-    "EGE": "#FCD34D",                  # BAL SARI (Batı Anadolu ile aynı)
+    "EGE": "#FCD34D",                  # BAL SARI
     "İÇ ANADOLU": "#F59E0B",           # Amber - Kuru bozkır
     "GÜNEY DOĞU ANADOLU": "#E07A5F",   # Terracotta 
     "KUZEY ANADOLU": "#059669",        # Emerald - Yemyeşil ormanlar
-    "KARADENİZ": "#059669",            # Emerald (Kuzey Anadolu ile aynı)
+    "KARADENİZ": "#059669",            # Emerald
     "AKDENİZ": "#8B5CF6",              # Violet - Akdeniz
     "DOĞU ANADOLU": "#7C3AED",         # Purple - Yüksek dağlar
     "DİĞER": "#64748B"                 # Slate Gray
@@ -2344,6 +2344,7 @@ Bu rapor Türkiye Satış Haritası uygulaması tarafından oluşturulmuştur.
                 mime="text/plain",
                 help="Genel özet ve top performansları içeren rapor"
             )
+
 
 
 
